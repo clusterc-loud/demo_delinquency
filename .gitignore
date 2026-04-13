@@ -52,3 +52,26 @@ Thumbs.db
 *.pkl
 *.h5
 *.joblib
+
+# === ML Sprint Additions ===
+*.zip
+*.7z
+catboost_info/
+logs/
+mlruns/
+
+# Deep Learning (R2/M3 Models)
+*.pt
+*.pth
+*.onnx
+*.pb
+*.ckpt
+
+# Project Outputs
+*.png
+*.pdf
+*.html
+
+# Database (FastAPI integration)
+*.sqlite3
+*.db
