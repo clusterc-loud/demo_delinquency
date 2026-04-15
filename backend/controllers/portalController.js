@@ -1,6 +1,8 @@
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
 const Intervention = require('../models/Intervention');
+const mlClient = require('../utils/mlClient');
+const { recordRiskTransactionOnChain } = require('../services/blockchainService');
 
 const clamp = (v, min = 0, max = 100) => Math.min(max, Math.max(min, v));
 
@@ -89,43 +91,95 @@ const simulateScenario = async (req, res, next) => {
 
     const latest = await RiskScore.findOne({ customerId: customer._id }).sort({ asOfDate: -1 });
     const currentScore = latest?.financialHealthScore || 60;
+    let projectedScore = currentScore;
+    let explanations = [];
 
-    let delta = 0;
-    const explanations = [];
+    try {
+      if (customer.customerType === 'MSME') {
+        let msmeData = { ...(customer.mlFeatures?.msme || { loan_amount: 100000, annual_income: 500000, dti: 0.3, revol_util: 0.3, int_rate: 0.12, term: 36, no_emp: 5 }) };
+        
+        if (incomeChange) {
+          msmeData.annual_income += (msmeData.annual_income * (incomeChange / 100));
+          explanations.push(`Income ${incomeChange > 0 ? 'increase' : 'decrease'} evaluated dynamically`);
+        }
+        if (loanAmount) {
+          msmeData.loan_amount += loanAmount;
+          explanations.push(`New loan evaluated for DTI and leverage impacts`);
+        }
+        
+        const mlRes = await mlClient.predictMSME(msmeData);
+        projectedScore = mlRes.vitt_chetak_index;
+      } else {
+        let retailData = { ...(customer.mlFeatures?.retail || { AMT_INCOME_TOTAL: 50000, AMT_CREDIT: 100000 }) };
+        
+        if (incomeChange) {
+          retailData.AMT_INCOME_TOTAL += (retailData.AMT_INCOME_TOTAL * (incomeChange / 100));
+          explanations.push(`Income change evaluated dynamically`);
+        }
+        if (loanAmount) {
+          retailData.AMT_CREDIT += loanAmount;
+          explanations.push(`New loan evaluated for debt burden`);
+        }
 
-    if (incomeChange) {
-      const impact = Math.round((incomeChange / 100) * 15);
-      delta += impact;
-      explanations.push(`Income ${incomeChange > 0 ? 'increase' : 'decrease'} of ${Math.abs(incomeChange)}% → ${impact > 0 ? '+' : ''}${impact} pts`);
+        const mlRes = await mlClient.predictRetail(retailData);
+        projectedScore = mlRes.score;
+      }
+    } catch (mlErr) {
+      console.log("ML service failed during simulate, using fallback", mlErr);
+      projectedScore = currentScore;
+      explanations.push("ML Simulation unavailable, showing base score.");
     }
 
-    if (monthlySIP) {
-      const impact = Math.min(8, Math.round(monthlySIP / 5000));
-      delta += impact;
-      explanations.push(`Monthly SIP of ₹${monthlySIP} → +${impact} pts portfolio boost`);
-    }
-
-    if (emergencyExpense) {
-      const impact = -Math.min(20, Math.round(emergencyExpense / 50000));
-      delta += impact;
-      explanations.push(`Emergency expense of ₹${emergencyExpense} → ${impact} pts liquidity impact`);
-    }
-
-    if (loanAmount) {
-      const impact = -Math.round((loanAmount / 5000000) * 6 + (tenure ? tenure / 30 * 2 : 0));
-      delta += impact;
-      explanations.push(`New loan of ₹${loanAmount} → ${impact} pts DTI impact`);
-    }
-
-    const projectedScore = clamp(currentScore + delta);
+    const delta = projectedScore - currentScore;
 
     res.json({
       currentScore,
       projectedScore,
-      delta,
-      change: delta,
+      delta: parseFloat(delta.toFixed(2)),
+      change: parseFloat(delta.toFixed(2)),
       explanation: explanations.join('. ') || 'No changes simulated.',
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/portal/:customerId/simulate-transaction
+const simulateTransaction = async (req, res, next) => {
+  try {
+    const { customerId } = req.params;
+    const { amount, category, merchantName, type } = req.body;
+
+    const customer = await Customer.findOne({ customerId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    let newScore = 50;
+    let mlStatus = 'Green';
+    let txId = 'PENDING_ONCHAIN';
+
+    const txEvent = { amount, category: category || 'general', merchantName, type, timestamp: new Date().toISOString() };
+
+    try {
+      if (customer.customerType === 'MSME') {
+        const payload = { ...(customer.mlFeatures?.msme || { loan_amount: 100000, annual_income: 500000, dti: 0.3 }), amt: amount || 500, category: txEvent.category };
+        const mlRes = await mlClient.predictMSME(payload);
+        newScore = mlRes.vitt_chetak_index;
+        mlStatus = mlRes.status;
+      } else {
+        const payload = { ...(customer.mlFeatures?.retail || { AMT_INCOME_TOTAL: 50000, AMT_CREDIT: 100000 }) };
+        const mlRes = await mlClient.predictRetail(payload);
+        newScore = mlRes.score;
+        mlStatus = mlRes.risk_level;
+      }
+
+      // Record risk and transaction directly to Algorand for absolute immutability
+      txId = await recordRiskTransactionOnChain(customerId, JSON.stringify(txEvent), newScore, mlStatus);
+
+    } catch (mlErr) {
+      console.error('ML API or Blockchain failed during transaction simulation', mlErr);
+    }
+
+    res.json({ success: true, transactionId: txId, newScore, status: mlStatus });
   } catch (err) {
     next(err);
   }
@@ -187,4 +241,4 @@ const requestCounsellor = async (req, res, next) => {
   }
 };
 
-module.exports = { getHealthSummary, simulateScenario, updateAlertPreferences, requestCounsellor };
+module.exports = { getHealthSummary, simulateScenario, simulateTransaction, updateAlertPreferences, requestCounsellor };

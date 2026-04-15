@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const mlClient = require('../utils/mlClient');
 
 // POST /api/auth/login
 const login = async (req, res, next) => {
@@ -62,7 +63,7 @@ const register = async (req, res, next) => {
       password: password || 'password123',
       name: resolvedName,
       role: role || 'analyst',
-      employeeId: employeeId || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+      employeeId: employeeId || `EMP-${Date.now() % 10000}`,
     });
 
     const token = generateToken(user._id);
@@ -138,7 +139,7 @@ const customerRegister = async (req, res, next) => {
     const existing = await Customer.findOne({ email: email.toLowerCase().trim() });
     if (existing) return res.status(409).json({ message: 'Email already registered' });
 
-    const customerId = `VC-${customerType === 'MSME' ? 'MSME' : 'RET'}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const customerId = `VC-${customerType === 'MSME' ? 'MSME' : 'RET'}-${Date.now() % 100000}`;
 
     const customer = await Customer.create({
       customerId,
@@ -151,21 +152,34 @@ const customerRegister = async (req, res, next) => {
       isActive: true,
     });
     
-    // Seed an initial RiskScore so the portal displays immediately
+    // Seed an initial RiskScore so the portal displays immediately using full ML precision
     const RiskScore = require('../models/RiskScore');
+    let startingScore = 75;
+    let dims = { liquidityIndex: 70, incomeStability: 70, portfolioHealth: 70, debtBurden: 30, behavioralSignals: 80, networkRisk: 25 };
+
+    try {
+      if (customerType === 'MSME') {
+        const payload = { loan_amount: 150000, annual_income: 600000, dti: 0.3, revol_util: 0.3, int_rate: 0.12, term: 36, no_emp: 5 };
+        const mlRes = await mlClient.predictMSME(payload);
+        startingScore = mlRes.vitt_chetak_index;
+        dims.liquidityIndex = mlRes.breakdown.credit_health;
+        dims.debtBurden = mlRes.breakdown.growth_potential;
+      } else {
+        const payload = { customer_id: customerId, AMT_INCOME_TOTAL: 65000, AMT_CREDIT: 120000, AMT_ANNUITY: 5000, DAYS_BIRTH: -10000, DAYS_EMPLOYED: -2000 };
+        const mlRes = await mlClient.predictRetail(payload);
+        startingScore = mlRes.score;
+        dims.liquidityIndex = 100 - ((mlRes.breakdown.r2?.liquidity_stress || 0.2) * 100);
+      }
+    } catch (e) {
+      console.log('ML seed failed during registration, using base 75 score.');
+    }
+
     await RiskScore.create({
       customerId: customer._id,
       asOfDate: new Date(),
-      financialHealthScore: Math.floor(65 + Math.random() * 25), // reasonable starting score 65-90
-      priorityLevel: 'P3',
-      dimensionScores: {
-        liquidityIndex: Math.floor(60 + Math.random() * 30),
-        incomeStability: Math.floor(60 + Math.random() * 30),
-        portfolioHealth: Math.floor(60 + Math.random() * 30),
-        debtBurden: Math.floor(20 + Math.random() * 40),
-        behavioralSignals: Math.floor(70 + Math.random() * 20),
-        networkRisk: Math.floor(20 + Math.random() * 40)
-      }
+      financialHealthScore: startingScore,
+      priorityLevel: startingScore > 60 ? 'P4' : 'P3',
+      dimensionScores: dims
     });
 
     const token = generateToken(customer._id);

@@ -1,0 +1,13 @@
+{
+  "name": "vittchetak-blockchain",
+  "version": "1.0.0",
+  "description": "Algorand Blockchain Scripts and TEAL Smart Contracts for Vitt Chetak Event Anchoring",
+  "scripts": {
+    "deploy": "node scripts/deployRiskLedger.js",
+    "audit": "node scripts/fetchGlobalRisk.js"
+  },
+  "dependencies": {
+    "algosdk": "^2.7.0",
+    "dotenv": "^17.4.2"
+  }
+}

@@ -1,0 +1,4 @@
+#pragma version 5
+// Clear state program always returns true so users can opt out regardless of state
+int 1
+return

@@ -2,11 +2,11 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const User = require('../server/models/User');
-const Customer = require('../server/models/Customer');
-const RiskScore = require('../server/models/RiskScore');
-const Intervention = require('../server/models/Intervention');
-const FraudFlag = require('../server/models/FraudFlag');
+const User = require('../models/User');
+const Customer = require('../models/Customer');
+const RiskScore = require('../models/RiskScore');
+const Intervention = require('../models/Intervention');
+const FraudFlag = require('../models/FraudFlag');
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -226,6 +226,21 @@ const seed = async () => {
       wealthSegment,
       maritalStatusInferred: pick(['SINGLE', 'MARRIED', 'MARRIED', 'DIVORCED', 'WIDOWED']),
       isActive: true,
+      mlFeatures: {
+        retail: {
+          age: rand(22, 65),
+          income: rand(20000, 1000000), // Wider range
+          creditAmount: rand(30000, 1500000),
+          annuity: rand(1000, 50000),
+          goodsPrice: rand(25000, 1400000),
+          daysBirth: -(rand(22, 65) * 365),
+          daysEmployed: -(rand(1, 40) * 365),
+          externalSource2: randFloat(0.05, 0.95), // High variance
+          externalSource3: randFloat(0.05, 0.95),
+          regionPopulationRelative: randFloat(0.0001, 0.1),
+          adjCloseHistory: Array.from({ length: 10 }, () => randFloat(10, 500)),
+        }
+      },
     });
   }
   const insertedRetail = await Customer.insertMany(retailCustomers);
@@ -259,6 +274,28 @@ const seed = async () => {
       gstNumber,
       annualTurnoverBand: pick(['<50L', '50L-2Cr', '2Cr-10Cr', '10Cr-50Cr', '>50Cr']),
       employeeCount: rand(2, 500),
+      mlFeatures: {
+        msme: {
+          annualIncome: rand(100000, 10000000), // Huge variance for business
+          loanAmount: rand(25000, 5000000),
+          installment: rand(1000, 100000),
+          dti: randFloat(0.05, 0.8),
+          intRate: randFloat(0.05, 0.35),
+          revolUtil: randFloat(0.0, 1.0),
+          term: pick([12, 24, 36, 48, 60, 120]),
+          noEmp: rand(1, 1000),
+          newExist: pick([1, 2]),
+          createJob: rand(0, 100),
+          retainedJob: rand(0, 500),
+          urbanRural: pick([1, 2]),
+          disbursementGross: rand(25000, 5000000),
+          grAppv: rand(25000, 5000000),
+          sbaAppv: rand(20000, 4500000),
+          realEstate: pick([0, 0, 1]),
+          portion: randFloat(0.2, 1.0),
+          inquiriesLast12m: rand(0, 10),
+        }
+      },
     });
   }
   const insertedMSME = await Customer.insertMany(msmeCustomers);

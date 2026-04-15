@@ -51,20 +51,22 @@ const getQueue = async (req, res, next) => {
       .sort({ slaDeadline: 1 })
       .populate('customerId', 'name customerId customerType businessName');
 
-    const queue = pending.map((rs) => ({
-      _id: rs._id,
-      customerId: rs.customerId?.customerId,
-      customerName:
-        rs.customerId?.customerType === 'MSME'
-          ? rs.customerId?.businessName || rs.customerId?.name
-          : rs.customerId?.name,
-      customerType: rs.customerId?.customerType,
-      patternDetected: rs.patternDetected,
-      priorityLevel: rs.priorityLevel,
-      slaDeadline: rs.slaDeadline,
-      interventionRecommended: rs.interventionRecommended,
-      healthScore: rs.financialHealthScore,
-    }));
+    const queue = pending.map((rs) => {
+      const now = new Date();
+      const diffMs = rs.slaDeadline ? new Date(rs.slaDeadline) - now : 24 * 60 * 60 * 1000;
+      return {
+        _id: rs._id,
+        id: rs.customerId?.customerId,
+        name: rs.customerId?.customerType === 'MSME'
+            ? rs.customerId?.businessName || rs.customerId?.name
+            : rs.customerId?.name,
+        segment: rs.customerId?.customerType,
+        priority: rs.priorityLevel,
+        slaHours: Math.max(0, diffMs / (1000 * 60 * 60)),
+        interventionType: rs.interventionRecommended || PATTERN_TO_INTERVENTION[rs.patternDetected] || 'BUSINESS_ADVISORY',
+        healthScore: rs.financialHealthScore,
+      };
+    });
 
     res.json({ queue });
   } catch (err) {

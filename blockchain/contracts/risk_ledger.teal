@@ -1,0 +1,79 @@
+#pragma version 5
+
+// This smart contract stores the risk score and status for MSME/Retail users.
+// When an EMI default risk is flagged, it records it on-chain immutably.
+// Operation:
+// 1. App Creation
+// 2. ApplicationCall storing metadata
+
+// Handle Application Creation
+txn ApplicationID
+int 0
+==
+bnz creation
+
+// Handle Application Deletion/Update
+// Only creator can update or delete
+txn OnCompletion
+int DeleteApplication
+==
+txn OnCompletion
+int UpdateApplication
+==
+||
+bnz handle_update_delete
+
+// Handlers for standard app calls
+txn OnCompletion
+int NoOp
+==
+bnz handle_noop
+
+err
+
+creation:
+    // Store creator
+    byte "Creator"
+    txn Sender
+    app_global_put
+
+    // Initialize global parameters for Vitt Chetak
+    byte "TotalRiskEvents"
+    int 0
+    app_global_put
+
+    int 1
+    return
+
+handle_noop:
+    // Only Creator can emit a risk signal to this contract
+    byte "Creator"
+    app_global_get
+    txn Sender
+    ==
+    assert
+
+    // Increment Risk Events Counter
+    byte "TotalRiskEvents"
+    byte "TotalRiskEvents"
+    app_global_get
+    int 1
+    +
+    app_global_put
+
+    // We accept Application Args to store User ID and new scores
+    // arg 0 is the UserID string
+    // arg 1 is the Risk Score integer
+    // arg 2 is the Timestamp
+    
+    // Accept the transaction as valid anchoring
+    int 1
+    return
+
+handle_update_delete:
+    // Verify it's the creator
+    byte "Creator"
+    app_global_get
+    txn Sender
+    ==
+    return

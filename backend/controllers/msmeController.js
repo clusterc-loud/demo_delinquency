@@ -1,7 +1,6 @@
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
 
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 // GET /api/msme/graph
 const getMSMEGraph = async (req, res, next) => {
@@ -37,29 +36,31 @@ const getMSMEGraph = async (req, res, next) => {
       };
     });
 
-    // Generate realistic edges — each node connects to 2-4 others
+    // Generate deterministic edges based on IDs — each node connects to 2-3 others
     const edges = [];
     const paymentStatuses = ['ON_TIME', 'ON_TIME', 'DELAYED', 'DEFAULTED'];
     const nodeIds = nodes.map((n) => n.id);
 
+    // Simple deterministic hash
+    const hash = (str) => {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+      return Math.abs(h);
+    };
+
     nodes.forEach((node, i) => {
-      const connectionCount = rand(2, 4);
+      const hval = hash(node.id);
+      const connectionCount = (hval % 2) + 2; // 2 or 3 connections
       const usedTargets = new Set();
       for (let c = 0; c < connectionCount; c++) {
-        let targetIdx;
-        let attempts = 0;
-        do {
-          targetIdx = rand(0, nodeIds.length - 1);
-          attempts++;
-        } while ((targetIdx === i || usedTargets.has(targetIdx)) && attempts < 20);
-
+        const targetIdx = (hval + c * 7) % nodeIds.length;
         if (targetIdx !== i && !usedTargets.has(targetIdx)) {
           usedTargets.add(targetIdx);
           edges.push({
             source: node.id,
             target: nodeIds[targetIdx],
-            paymentStatus: paymentStatuses[rand(0, paymentStatuses.length - 1)],
-            volume: rand(100000, 5000000),
+            paymentStatus: paymentStatuses[(hval + c) % paymentStatuses.length],
+            volume: ((hval % 10) + 1) * 50000 + c * 25000,
           });
         }
       }
@@ -87,7 +88,11 @@ const getContagionPath = async (req, res, next) => {
       .limit(5)
       .select('customerId');
 
-    const path = [msmeId, ...connected.map((c) => c.customerId).slice(0, rand(2, 4))];
+    // Deterministic path
+    let h = 0;
+    for (let i = 0; i < msmeId.length; i++) h = Math.imul(31, h) + msmeId.charCodeAt(i) | 0;
+    const len = (Math.abs(h) % 3) + 2;
+    const path = [msmeId, ...connected.map((c) => c.customerId).slice(0, len)];
 
     res.json({ path, length: path.length });
   } catch (err) {

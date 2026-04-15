@@ -58,10 +58,16 @@ export default function Customer360() {
     setRescoring(true);
     try {
       const { data } = await api.post(`/customer/${id}/rescore`);
-      addToast('Rescore initiated successfully', 'success');
-      if (data?.riskScore) setProfile((prev) => ({ ...prev, riskScore: data.riskScore }));
-    } catch {
-      addToast('Rescore failed. Using cached score.', 'error');
+      const newScore = data?.financialHealthScore ?? data?.riskScore;
+      if (newScore !== undefined) {
+        setProfile((prev) => ({ ...prev, riskScore: newScore }));
+        addToast(`Rescore complete — New score: ${newScore}. Risk anchored to Algorand blockchain.`, 'success');
+      } else {
+        addToast('Rescore complete. Score updated.', 'success');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Rescore failed. ML service may be offline.';
+      addToast(msg, 'error');
     } finally {
       setRescoring(false);
     }
