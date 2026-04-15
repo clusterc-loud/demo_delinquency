@@ -1,0 +1,19 @@
+{
+  "name": "vittchetak-unified",
+  "version": "1.0.0",
+  "description": "Unified repository for Vitt Chetak: Frontend, Backend, and ML Service",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:ml": "cd ml-service && python main.py",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ml\"",
+    "start:frontend": "npm run start --prefix frontend",
+    "start:backend": "npm run start --prefix backend",
+    "start:ml": "cd ml-service && python main.py",
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\" \"npm run start:ml\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

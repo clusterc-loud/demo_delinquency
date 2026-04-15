@@ -64,6 +64,46 @@ const customerSchema = new mongoose.Schema({
     quietHoursStart: { type: String, default: '22:00' },
     quietHoursEnd: { type: String, default: '07:00' },
   },
+  // Technical Features for 6-model ML Suite
+  mlFeatures: {
+    // MSME Logic (M1, M2, M3)
+    msme: {
+      loanAmount: Number,
+      term: Number,
+      noEmp: Number,
+      newExist: Number,
+      createJob: Number,
+      retainedJob: Number,
+      urbanRural: Number,
+      disbursementGross: Number,
+      grAppv: Number,
+      sbaAppv: Number,
+      realEstate: Number,
+      portion: Number,
+      dti: Number,
+      annualIncome: Number,
+    },
+    // Retail Logic (R1, R2, R3)
+    retail: {
+      adjCloseHistory: [Number],
+      age: Number,
+      income: Number,
+      creditAmount: Number,
+      annuity: Number,
+      goodsPrice: Number,
+      childrenCount: Number,
+      familyMembers: Number,
+      regionRating: Number,
+      cityRating: Number,
+      daysBirth: Number,
+      daysEmployed: Number,
+      daysRegistration: Number,
+      daysIdPublish: Number,
+      externalSource1: Number,
+      externalSource2: Number,
+      externalSource3: Number,
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now,
