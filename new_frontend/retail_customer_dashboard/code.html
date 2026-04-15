@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VittChetak | Retail Customer Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#d9e6da",
+                        "on-tertiary-fixed-variant": "#3d475a",
+                        "secondary-fixed": "#c8ead7",
+                        "inverse-on-surface": "#e7f4e8",
+                        "inverse-surface": "#28332b",
+                        "primary-container": "#1db954",
+                        "surface-container": "#e4f1e5",
+                        "secondary": "#466556",
+                        "tertiary": "#555f73",
+                        "outline": "#6d7b6c",
+                        "secondary-fixed-dim": "#adcebc",
+                        "on-tertiary-container": "#2e384b",
+                        "surface-variant": "#d9e6da",
+                        "outline-variant": "#bccbb9",
+                        "on-secondary-fixed-variant": "#2f4d3f",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#4a695a",
+                        "tertiary-container": "#97a1b8",
+                        "surface-container-high": "#dfece0",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#d9e3fb",
+                        "surface-dim": "#d0ddd2",
+                        "primary": "#006e2d",
+                        "on-primary-container": "#004118",
+                        "surface-bright": "#f0fdf1",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-surface": "#131e17",
+                        "surface-container-low": "#eaf7eb",
+                        "surface": "#f0fdf1",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#022115",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#72fe8f",
+                        "on-primary-fixed": "#002108",
+                        "primary-fixed-dim": "#53e076",
+                        "on-tertiary-fixed": "#111c2d",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#bdc7de",
+                        "error": "#ba1a1a",
+                        "background": "#f0fdf1",
+                        "surface-tint": "#006e2d",
+                        "inverse-primary": "#53e076",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#c5e8d5",
+                        "on-surface-variant": "#3d4a3d",
+                        "on-background": "#131e17"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdf1;
+            color: #131e17;
+        }
+        h1, h2, h3, .font-jakarta {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom progress for gauge */
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+        .gauge-bg {
+            fill: none;
+            stroke: #e4f1e5;
+            stroke-width: 8;
+        }
+        .gauge-fill {
+            fill: none;
+            stroke: #1db954;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: calc(251.2 - (251.2 * 82) / 100);
+        }
+    </style>
+</head>
+<body class="flex min-h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="hidden md:flex flex-col h-full py-6 bg-emerald-50 dark:bg-emerald-950 h-screen w-64 border-r-0 font-['Plus_Jakarta_Sans'] font-medium antialiased shrink-0">
+<div class="px-8 mb-10">
+<h1 class="text-2xl font-bold text-emerald-900 dark:text-emerald-50 tracking-tight">VittChetak</h1>
+<p class="text-[10px] uppercase tracking-widest text-green-600 font-bold mt-1">Premium Growth Tier</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<!-- Active Tab: Dashboard (Mapped to the intent of a main home screen) -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-green-700 dark:text-green-300 font-bold border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>EMI Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span>Financial Health</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+<span class="material-symbols-outlined" data-icon="help_center">help_center</span>
+<span>Support</span>
+</a>
+</nav>
+<div class="mt-auto px-4 pb-4">
+<button class="w-full flex items-center justify-center gap-2 py-4 px-4 bg-primary text-on-primary rounded-lg font-bold text-sm shadow-xl shadow-primary/10 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+                AI Insights
+            </button>
+<div class="mt-6 px-4 flex items-center gap-3">
+<img alt="User profile photo" class="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-200" data-alt="Professional portrait of a middle-aged man with a friendly expression, wearing a tailored navy blazer in a bright studio environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt530Pm_OOXTQ2YTDeTI1SvWDHvy_c30n2kP0Yd7Yv_PCdTbFPKc4DUkc6-pgWSbrkouskKfTAJ5D1wfyoLUf99pJjMsZlMv8G3BtWeoxZTUW4rSnWOA9L_FQjzgEF_2MS2wRYJBdXA5Y1t0AWoLcBbe3m2TNSQpXrXBpoQ_TRmA2lo58qB4lN76tRu1beHuURqvRmeb5Q06_jFG_I4hqAMnqPysu6rk2gvmfGrhZk3TC5kEwpcALQRRvQvTVPVWij_tE8-Km7wQ"/>
+<div class="overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Siddharth V.</p>
+<p class="text-[10px] text-on-surface-variant">Growth Member</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto bg-surface relative">
+<!-- Top Bar -->
+<header class="flex justify-between items-center w-full px-8 py-3 bg-emerald-50/80 dark:bg-emerald-950/80 backdrop-blur-xl docked full-width top-0 sticky z-50 transition-all font-['Plus_Jakarta_Sans'] text-sm">
+<div class="flex items-center gap-4 flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg" data-icon="search">search</span>
+<input class="w-full bg-surface-container-highest border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/60" placeholder="Search transactions or tools..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+<img alt="User avatar" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="Close up portrait of a smiling executive with short hair, high-key lighting, corporate minimalist aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtTJ23MDex2bCgpwE7AeG44iS3OkUEa-77kOeGBG_XvyoiJomQ59O-3kBu4c_hYo0Aq8ODiC8-1f9fvBsJFZLmbwyMvmKRyvqIPXzH2EiDsnazIA0xuF0M5YcPs8oxwI-_hAWx2Ppe4JfYhhE246FvPN230s6uzfDjAgTii23ZcSBgzirjPofcHUKXonWORPe_0U2A5mFNn7kXLmrf-9c_usryhzZ6z_y8K6Ty9lMwgWEEmIhuiPVmVtPS4z1MxvtbZHirJcG6Sg"/>
+</div>
+</header>
+<div class="p-8 space-y-8">
+<!-- Hero Section (Bento Grid Style) -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Welcome Card -->
+<div class="lg:col-span-2 bg-gradient-to-br from-primary to-primary-container rounded-lg p-8 text-on-primary flex flex-col justify-between min-h-[240px] relative overflow-hidden shadow-2xl shadow-primary/20">
+<div class="relative z-10">
+<h2 class="text-3xl font-extrabold tracking-tight mb-2">Welcome back, Siddharth</h2>
+<p class="text-on-primary/80 max-w-md">Your financial growth is on a steady trajectory. You've successfully cleared 4 EMIs this quarter.</p>
+</div>
+<div class="relative z-10 flex gap-12 mt-8">
+<div>
+<p class="text-xs uppercase tracking-widest text-on-primary/60 font-bold">Total Active Loans</p>
+<p class="text-4xl font-bold mt-1">₹4,20,000</p>
+</div>
+<div>
+<p class="text-xs uppercase tracking-widest text-on-primary/60 font-bold">Next Due</p>
+<p class="text-4xl font-bold mt-1">Oct 12</p>
+</div>
+</div>
+<!-- Aesthetic Glass Circle Decoration -->
+<div class="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+</div>
+<!-- Financial Health Card -->
+<div class="bg-surface-container-lowest rounded-lg p-8 flex flex-col items-center justify-center text-center">
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">Financial Health Score</p>
+<div class="relative flex items-center justify-center mb-4">
+<svg class="gauge-svg w-32 h-32" viewbox="0 0 100 100">
+<circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
+<circle class="gauge-fill" cx="50" cy="50" r="40"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-3xl font-black text-primary">82</span>
+</div>
+</div>
+<div class="bg-primary-fixed px-3 py-1 rounded-full mb-3">
+<span class="text-[10px] font-bold text-on-primary-fixed uppercase tracking-wider">Excellent</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+<span class="font-bold text-primary">AI Insight:</span> Your debt-to-income ratio improved by 4% this month. Keep it up!
+                    </p>
+</div>
+</section>
+<!-- EMI Transaction Logs -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-xl font-bold tracking-tight text-on-surface">EMI Transaction Logs</h3>
+<button class="text-primary text-sm font-bold flex items-center gap-1">
+                        View Statement <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="bg-surface-container-low rounded-lg overflow-hidden">
+<div class="grid grid-cols-4 px-8 py-4 border-b border-outline-variant/10 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+<div>Date</div>
+<div>Description</div>
+<div>Amount</div>
+<div class="text-right">Status</div>
+</div>
+<div class="divide-y divide-outline-variant/10">
+<!-- Transaction Row 1 -->
+<div class="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
+<div class="text-sm text-on-surface">Sep 12, 2023</div>
+<div class="text-sm font-medium text-on-surface">Home Loan EMI #24</div>
+<div class="text-sm font-bold text-on-surface">₹24,500</div>
+<div class="text-right">
+<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Paid</span>
+</div>
+</div>
+<!-- Transaction Row 2 -->
+<div class="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
+<div class="text-sm text-on-surface">Aug 12, 2023</div>
+<div class="text-sm font-medium text-on-surface">Home Loan EMI #23</div>
+<div class="text-sm font-bold text-on-surface">₹24,500</div>
+<div class="text-right">
+<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Paid</span>
+</div>
+</div>
+<!-- Transaction Row 3 -->
+<div class="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
+<div class="text-sm text-on-surface">Jul 12, 2023</div>
+<div class="text-sm font-medium text-on-surface">Personal Loan EMI #06</div>
+<div class="text-sm font-bold text-on-surface">₹8,200</div>
+<div class="text-right">
+<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Paid</span>
+</div>
+</div>
+<!-- Transaction Row 4 -->
+<div class="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
+<div class="text-sm text-on-surface">Oct 12, 2023</div>
+<div class="text-sm font-medium text-on-surface">Home Loan EMI #25</div>
+<div class="text-sm font-bold text-on-surface">₹24,500</div>
+<div class="text-right">
+<span class="bg-tertiary-fixed text-on-tertiary-container text-[10px] font-bold px-2 py-1 rounded-full uppercase">Pending</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Support Section -->
+<section class="space-y-6">
+<h3 class="text-xl font-bold tracking-tight text-on-surface">Support &amp; Resources</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- FAQ Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant/10 hover:shadow-md transition-all">
+<div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</div>
+<h4 class="font-bold text-on-surface mb-2">Can I prepay my EMI?</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Prepayments are available after the first 6 months of your loan tenure with zero penalties.</p>
+</div>
+<!-- FAQ Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant/10 hover:shadow-md transition-all">
+<div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-primary mb-4">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<h4 class="font-bold text-on-surface mb-2">Change Repayment Bank</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Switch your primary repayment account by updating your NACH mandate in the settings.</p>
+</div>
+<!-- Chat with Agent Card -->
+<div class="bg-surface-container-low p-6 rounded-lg flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-on-surface mb-2">Need direct help?</h4>
+<p class="text-xs text-on-surface-variant mb-4">Our financial advisors are available 24/7 to assist with complex queries.</p>
+</div>
+<button class="w-full py-3 bg-secondary text-on-secondary rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
+<span class="material-symbols-outlined text-sm" data-icon="chat">chat</span>
+                            Chat with Agent
+                        </button>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer spacing -->
+<div class="h-12"></div>
+</main>
+<!-- Mobile Bottom NavBar (Suppressed on large screens) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-emerald-50/95 backdrop-blur-md flex justify-around py-3 px-2 border-t border-outline-variant/20 z-50">
+<a class="flex flex-col items-center gap-1 text-green-700 font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="text-[10px]">Dashboard</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="text-[10px]">EMI</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span class="text-[10px]">Health</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined" data-icon="help_center">help_center</span>
+<span class="text-[10px]">Support</span>
+</a>
+</nav>
+</body></html>

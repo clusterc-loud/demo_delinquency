@@ -73,12 +73,12 @@ export default function Landing() {
                 Bank Admin Login
                 <ArrowRight className="w-5 h-5" />
               </button>
-              <a
-                href="#features"
-                className="border-2 border-[#131e17] text-[#131e17] px-8 py-4 rounded-xl font-bold hover:bg-[#eaf7eb] transition-colors active:scale-95 flex items-center justify-center"
+              <button
+                onClick={() => navigate('/customer-login')}
+                className="border-2 border-[#131e17] text-[#131e17] px-8 py-4 rounded-xl font-bold hover:bg-[#eaf7eb] transition-colors active:scale-95 flex items-center justify-center gap-2"
               >
-                Learn How It Works
-              </a>
+                Customer Login
+              </button>
             </div>
             {/* Social Proof Strip */}
             <div className="pt-8">

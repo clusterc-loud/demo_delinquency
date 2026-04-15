@@ -6,6 +6,8 @@ import { ToastProvider } from './components/Toast';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import CustomerLogin from './pages/CustomerLogin';
+import CustomerSignUp from './pages/CustomerSignUp';
 import Dashboard from './pages/Dashboard';
 import FlaggedAccounts from './pages/FlaggedAccounts';
 import Customer360 from './pages/Customer360';
@@ -32,6 +34,8 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/customer-login" element={<CustomerLogin />} />
+            <Route path="/customer-signup" element={<CustomerSignUp />} />
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

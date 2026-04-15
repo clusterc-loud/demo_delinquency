@@ -67,6 +67,9 @@ const getHealthSummary = async (req, res, next) => {
       scoreTrend,
       name: customer.name,
       customerId: customer.customerId,
+      customerType: customer.customerType,
+      businessName: customer.businessName,
+      gstNumber: customer.gstNumber,
     });
   } catch (err) {
     next(err);

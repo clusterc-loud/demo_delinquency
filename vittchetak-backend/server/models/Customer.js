@@ -6,6 +6,16 @@ const customerSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true,
+    lowercase: true,
+    trim: true,
+  },
+  password: {
+    type: String,
+  },
   customerType: {
     type: String,
     enum: ['RETAIL', 'MSME'],
@@ -59,5 +69,18 @@ const customerSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+customerSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const bcrypt = require('bcryptjs');
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+customerSchema.methods.comparePassword = async function (candidatePassword) {
+  const bcrypt = require('bcryptjs');
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('Customer', customerSchema);
