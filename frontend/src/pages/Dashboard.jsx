@@ -9,6 +9,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import { Search, AlertTriangle, Megaphone, TrendingDown } from 'lucide-react';
 import NotificationBell from '../components/NotificationPanel';
 import api from '../api/axios';
+import ChatInbox from '../components/ChatInbox';
 
 const HEATMAP_ROWS = ['Agri-Loans', 'MSME Credit', 'Retail Per', 'Commercial'];
 const HEATMAP_COLS = ['Region N', 'Region E', 'Region W', 'Region S', 'Central', 'Global'];
@@ -264,7 +265,7 @@ export default function Dashboard() {
           </div>
 
           {/* Intervention Outcomes Bar Chart */}
-          <div className="col-span-12 bg-[#eaf7eb] p-8 rounded-xl">
+          <div className="col-span-12 lg:col-span-8 bg-[#eaf7eb] p-8 rounded-xl">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-xl font-bold text-[#131e17]">Intervention Outcomes</h3>
@@ -282,6 +283,11 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Smart Messaging Inbox */}
+          <div className="col-span-12 lg:col-span-4">
+            <ChatInbox />
           </div>
         </div>
       </main>

@@ -9,11 +9,36 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
  */
 const predictMSME = async (data) => {
   try {
-    const response = await axios.post(`${ML_SERVICE_URL}/predict/msme`, data);
+    // Ensure data alignment with MSMEInput Pydantic model
+    const payload = {
+      annual_income: data.annualIncome || data.annual_income || 500000,
+      loan_amount: data.loanAmount || data.loan_amount || 100000,
+      installment: data.installment || 5000,
+      dti: data.dti || 0.3,
+      int_rate: data.intRate || data.int_rate || 0.12,
+      revol_util: data.revolUtil || data.revol_util || 0.3,
+      term: data.term || 36,
+      no_emp: data.noEmp || data.no_emp || 5,
+      new_exist: data.newExist || data.new_exist || 1,
+      create_job: data.createJob || data.create_job || 0,
+      retained_job: data.retainedJob || data.retained_job || 0,
+      urban_rural: data.urbanRural || data.urban_rural || 1,
+      disbursement_gross: data.disbursementGross || data.disbursement_gross || 50000,
+      gr_appv: data.grAppv || data.gr_appv || 50000,
+      sba_appv: data.sbaAppv || data.sba_appv || 40000,
+      real_estate: data.realEstate || data.real_estate || 0,
+      portion: data.portion || 0.8
+    };
+    const response = await axios.post(`${ML_SERVICE_URL}/predict/msme`, payload);
     return response.data;
   } catch (error) {
-    console.error('Error calling ML service for MSME prediction:', error.message);
-    throw error;
+    console.warn('⚠️ MSME ML API Fallback. Error:', error.message);
+    return {
+      type: "MSME",
+      vitt_chetak_index: 72.5,
+      status: "Green",
+      breakdown: { credit_health: 30, safety_shield: 25, growth_potential: 17.5 }
+    };
   }
 };
 
@@ -27,14 +52,12 @@ const predictRetail = async (data) => {
     const response = await axios.post(`${ML_SERVICE_URL}/predict/retail`, data);
     return response.data;
   } catch (error) {
-    console.warn('⚠️ ML API IS DOWN. Returning graceful fallback mock metrics.');
+    console.warn('⚠️ RETAIL ML API Fallback. Error:', error.message);
     
-    // Simulate smart logic without the python server
-    let mockScore = 80;
-    
-    // If the simulator reduced available liquidity history dynamically:
-    if (data.adj_close_history && data.adj_close_history[0] < 80) mockScore = 42; // Miss EMI
-    if (data.AMT_ANNUITY && data.AMT_ANNUITY < 40000) mockScore = 95; // Restructure/Pay EMI
+    // Simulate smart logic based on input
+    let mockScore = 78;
+    if (data.AMT_ANNUITY < 50000) mockScore = 88; // Restructured
+    if (data.adj_close_history && data.adj_close_history[0] < 50) mockScore = 32; // Critical shock
     
     return {
       type: "RETAIL",

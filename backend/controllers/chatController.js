@@ -79,4 +79,27 @@ const quickReplyChat = async (req, res, next) => {
   }
 };
 
-module.exports = { getChatHistory, sendChatMessage, getAdminNotifications, quickReplyChat };
+const getInbox = async (req, res, next) => {
+  try {
+    const chats = await Chat.find().sort({ updatedAt: -1 });
+    const customers = await Customer.find({ customerId: { $in: chats.map(c => c.customerId) } });
+    
+    const inbox = chats.map(c => {
+      const cust = customers.find(cu => cu.customerId === c.customerId);
+      const lastMsg = c.messages[c.messages.length - 1];
+      return {
+        customerId: c.customerId,
+        name: cust ? (cust.businessName || cust.name) : 'Unknown',
+        lastMessage: lastMsg?.text || '',
+        timestamp: lastMsg?.timestamp || c.updatedAt,
+        sender: lastMsg?.sender || 'SYSTEM'
+      };
+    });
+    
+    res.json(inbox);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getChatHistory, sendChatMessage, getAdminNotifications, quickReplyChat, getInbox };

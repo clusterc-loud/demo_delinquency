@@ -25,6 +25,7 @@ mongoose.connect(process.env.MONGODB_URI).then(async () => {
        if (rs) {
            rs.financialHealthScore = 42;
            rs.priorityLevel = 'P1';
+           rs.status = 'PENDING';
            rs.patternDetected = 'LIQUIDITY_CRUNCH';
            await rs.save();
        }

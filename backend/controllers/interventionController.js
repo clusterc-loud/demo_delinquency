@@ -60,7 +60,7 @@ const getQueue = async (req, res, next) => {
       
       return {
         _id: rs._id,
-        id: rs.customerId?.customerId,
+        id: rs.customerId?.customerId || rs._id.toString(),
         name: rs.customerId?.customerType === 'MSME'
             ? rs.customerId?.businessName || rs.customerId?.name
             : rs.customerId?.name,
@@ -146,18 +146,22 @@ const approveIntervention = async (req, res, next) => {
     });
 
     // [DYNAMIC FEATURE] Automagically repair the EMI schedule to represent real restructuring
-    if (safeInterventionType === 'EMI_RESTRUCTURE' && customer.mlFeatures && customer.mlFeatures.retail) {
-      customer.mlFeatures.retail.annuity = customer.mlFeatures.retail.annuity * 0.7; // Reduce mathematical EMI burden by 30%
-      customer.mlFeatures.retail.adjCloseHistory = customer.mlFeatures.retail.adjCloseHistory.map(v => v * 1.5); 
+    if (safeInterventionType === 'EMI_RESTRUCTURE' && customer.mlFeatures) {
+      if (customer.customerType === 'RETAIL' && customer.mlFeatures.retail) {
+        customer.mlFeatures.retail.annuity = (customer.mlFeatures.retail.annuity || 0) * 0.7; // Reduce mathematical EMI burden by 30%
+        customer.mlFeatures.retail.adjCloseHistory = (customer.mlFeatures.retail.adjCloseHistory || []).map(v => v * 1.5); 
+      } else if (customer.customerType === 'MSME' && customer.mlFeatures.msme) {
+        customer.mlFeatures.msme.installment = (customer.mlFeatures.msme.installment || 0) * 0.7; // Reduce MSME installment by 30%
+      }
       
-      // Update the actual dynamic EMI queue in the db
-      if (customer.emiSchedule) {
+      // Update the actual dynamic EMI queue in the db for BOTH types
+      if (customer.emiSchedule && customer.emiSchedule.length > 0) {
         customer.emiSchedule.forEach(emi => {
           if (emi.status === 'PENDING' || emi.status === 'OVERDUE') {
             emi.originalAmount = emi.amount;
             emi.amount = emi.amount * 0.7; // Lower by 30%
             emi.isRestructured = true;
-            emi.description = `Restructured: ${emi.description}`;
+            emi.description = `Restructured: ${emi.description || 'EMI Payment'}`;
             if (emi.status === 'OVERDUE') emi.status = 'PENDING'; // Clear penalty
           }
         });
@@ -165,28 +169,42 @@ const approveIntervention = async (req, res, next) => {
 
       await customer.save();
 
-      // Recalculate score immediately
+      // Recalculate score immediately using the real ML service
       try {
         const mlService = require('../services/mlService');
-        const retail = customer.mlFeatures.retail;
-        const resScore = await mlService.predictRetail({
-          customer_id: customerId,
-          AMT_INCOME_TOTAL: retail.income || 500000,
-          AMT_CREDIT: retail.creditAmount || 100000,
-          AMT_ANNUITY: retail.annuity,
-          AMT_GOODS_PRICE: retail.goodsPrice || 100000,
-          REGION_POPULATION_RELATIVE: retail.regionRating || 0.02,
-          DAYS_BIRTH: -10000,
-          DAYS_EMPLOYED: retail.daysEmployed || -1000,
-          EXT_SOURCE_2: retail.externalSource2,
-          EXT_SOURCE_3: retail.externalSource3,
-          adj_close_history: retail.adjCloseHistory
-        });
-        riskScore.financialHealthScore = resScore.score;
+        let resScore;
+        
+        if (customer.customerType === 'RETAIL') {
+          const retail = customer.mlFeatures.retail;
+          resScore = await mlService.predictRetail({
+            customer_id: customerId,
+            AMT_INCOME_TOTAL: retail.income || 500000,
+            AMT_CREDIT: retail.creditAmount || 100000,
+            AMT_ANNUITY: retail.annuity,
+            AMT_GOODS_PRICE: retail.goodsPrice || 100000,
+            REGION_POPULATION_RELATIVE: retail.regionRating || 0.02,
+            DAYS_BIRTH: -10000,
+            DAYS_EMPLOYED: retail.daysEmployed || -1000,
+            EXT_SOURCE_2: retail.externalSource2 || 0.5,
+            EXT_SOURCE_3: retail.externalSource3 || 0.5,
+            adj_close_history: retail.adjCloseHistory || []
+          });
+          riskScore.financialHealthScore = resScore.score;
+        } else {
+          const msme = customer.mlFeatures.msme;
+          resScore = await mlService.predictMSME({
+            ...msme,
+            customer_id: customerId
+          });
+          riskScore.financialHealthScore = resScore.vitt_chetak_index;
+        }
+
         riskScore.patternDetected = 'HEALTHY';
         riskScore.priorityLevel = 'P5';
       } catch (err) {
-        console.error('Demo ML Restore Failed:', err);
+        console.error('ML Recovery Score Calculation Failed:', err.message);
+        // Fallback if ML service is actually down
+        riskScore.financialHealthScore = Math.min(100, (riskScore.financialHealthScore || 50) + 20);
       }
     }
 

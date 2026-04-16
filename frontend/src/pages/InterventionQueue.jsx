@@ -72,14 +72,23 @@ export default function InterventionQueue() {
   }, []);
 
   useEffect(() => {
+    let chatInterval;
     if (selected) {
       generateMessage(selected);
       // Fetch dynamic chat history
-      api.get(`/chat/${selected.id}`).then(res => {
-        setChatHistory(res.data.messages || []);
-      }).catch(() => setChatHistory([]));
+      const fetchChat = () => {
+        api.get(`/chat/${selected.id}`).then(res => {
+          setChatHistory(res.data.messages || []);
+        }).catch(() => setChatHistory([]));
+      };
+      
+      fetchChat();
+      chatInterval = setInterval(fetchChat, 3000); // Poll every 3s for live feel
     }
-  }, [selected]);
+    return () => {
+      if (chatInterval) clearInterval(chatInterval);
+    };
+  }, [selected, generateMessage]);
 
   const handleSendChat = async () => {
     if (!replyText.trim() || !selected) return;
@@ -122,7 +131,12 @@ export default function InterventionQueue() {
   const handleApprove = async () => {
     setSendingTo(selected.id);
     try {
-      await api.post(`/interventions/${selected.id}/approve`, { channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), messagePreview: message, interventionType: selected.interventionType });
+      await api.post(`/interventions/${selected.id}/approve`, { 
+        channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), 
+        messagePreview: message, 
+        interventionType: selected.interventionType,
+        approvedBy: 'ADMIN_HACKATHON'
+      });
       addToast(`Intervention sent to ${selected.name}`, 'success');
       setQueue((prev) => prev.filter((q) => q.id !== selected.id));
       setSelected(queue.find((q) => q.id !== selected.id) || null);
@@ -168,7 +182,10 @@ export default function InterventionQueue() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {queue.filter(q => q.name.toLowerCase().includes(searchTerm.toLowerCase()) || q.id.includes(searchTerm)).map((item) => (
+            {(queue || []).filter(q => 
+              (q.name || "").toLowerCase().includes((searchTerm || "").toLowerCase()) || 
+              (q.id || "").toString().includes(searchTerm || "")
+            ).map((item) => (
               <div
                 key={item.id}
                 onClick={() => setSelected(item)}
@@ -291,7 +308,12 @@ export default function InterventionQueue() {
                   onClick={async () => {
                     setSendingTo(selected.id);
                     try {
-                      const res = await api.post(`/interventions/${selected.id}/approve`, { channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), messagePreview: message, interventionType: 'EMI_RESTRUCTURE' });
+                      const res = await api.post(`/interventions/${selected.id}/approve`, { 
+                        channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), 
+                        messagePreview: message, 
+                        interventionType: 'EMI_RESTRUCTURE',
+                        approvedBy: 'ADMIN_HACKATHON'
+                      });
                       addToast(`Restructured EMI. Risk Score recovered to ${res.data.newScore}`, 'success');
                       setQueue((prev) => prev.filter((q) => q.id !== selected.id));
                       setSelected(null);

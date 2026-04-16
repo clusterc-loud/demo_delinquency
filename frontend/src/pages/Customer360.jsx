@@ -124,11 +124,15 @@ export default function Customer360() {
               <h4 className="text-xs font-black uppercase tracking-widest text-[#3d4a3d] mb-4">Quick Actions</h4>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { icon: <Phone className="w-5 h-5" />, label: 'Call', primary: false },
-                  { icon: <Mail className="w-5 h-5" />, label: 'Email', primary: false },
-                  { icon: <FileText className="w-5 h-5" />, label: 'Restructure', primary: true },
+                  { icon: <Phone className="w-5 h-5" />, label: 'Call', primary: false, onClick: () => addToast('Connecting to RM...', 'success') },
+                  { icon: <Mail className="w-5 h-5" />, label: 'Email', primary: false, onClick: () => addToast('Advisory Email Sent.', 'success') },
+                  { icon: <FileText className="w-5 h-5" />, label: 'Restructure', primary: true, onClick: () => navigate(`/interventions?customerId=${id}`) },
                 ].map((btn, i) => (
-                  <button key={i} className={`py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all ${btn.primary ? 'bg-[#006e2d] text-white hover:bg-[#004118]' : 'bg-[#eaf7eb] text-[#131e17] hover:bg-[#d9e6da]'}`}>
+                  <button 
+                    key={i} 
+                    onClick={btn.onClick}
+                    className={`py-3 px-2 rounded-xl flex flex-col items-center gap-1.5 transition-all ${btn.primary ? 'bg-[#006e2d] text-white hover:bg-[#004118]' : 'bg-[#eaf7eb] text-[#131e17] hover:bg-[#d9e6da]'}`}
+                  >
                     {btn.icon}
                     <span className="text-[10px] font-bold">{btn.label}</span>
                   </button>
