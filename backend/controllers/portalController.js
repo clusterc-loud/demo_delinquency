@@ -60,6 +60,25 @@ const getHealthSummary = async (req, res, next) => {
       score: rs.financialHealthScore,
     })).reverse();
 
+    // MSME Dashboard Data Expansion
+    const isMSME = customer.customerType === 'MSME';
+    const businessMetrics = isMSME ? {
+      revenue: Math.round(latest.financialHealthScore * 125000), // Mock trend based on score
+      profit: Math.round(latest.financialHealthScore * 32000),
+      revenueTrend: [+5.2, -2.1, +1.8, +4.5, -0.5, +2.3],
+      gstStatus: {
+        lastFiled: 'March 2026',
+        isPending: false,
+        taxScore: 88,
+        complianceRate: '98%'
+      },
+      loanSummary: {
+        totalPending: (customer.emiSchedule || []).filter(e => e.status !== 'PAID').length,
+        totalAmount: (customer.emiSchedule || []).reduce((acc, curr) => acc + (curr.status !== 'PAID' ? curr.amount : 0), 0),
+        activeLoans: 1, // Default mock
+      }
+    } : null;
+
     res.json({
       score,
       band,
@@ -73,7 +92,76 @@ const getHealthSummary = async (req, res, next) => {
       gstNumber: customer.gstNumber,
       emiSchedule: customer.emiSchedule,
       fraudScore: latest.fraudScore || 0,
+      status: latest.status,
+      breakdown: latest.dimensionScores,
+      businessMetrics,
+      restructuringProposal: await Intervention.findOne({ 
+        customerId: customer._id, 
+        interventionType: { $in: ['EMI_RESTRUCTURE', 'PAYMENT_HOLIDAY'] },
+        customerResponse: 'PENDING',
+        adminStatus: 'APPROVED'
+      }).sort({ timestamp: -1 }),
+      hasPendingRequest: !!(await Intervention.findOne({
+        customerId: customer._id,
+        customerResponse: 'PENDING',
+        adminStatus: 'PROPOSED'
+      }).lean())
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/portal/:customerId/accept-restructure
+const acceptRestructure = async (req, res, next) => {
+  try {
+    const { customerId } = req.params;
+    const { interventionId } = req.body;
+
+    const customer = await Customer.findOne({ customerId });
+    const intervention = await Intervention.findById(interventionId);
+
+    if (!customer || !intervention) return res.status(404).json({ message: 'Data not found' });
+    if (intervention.customerResponse !== 'PENDING') return res.status(400).json({ message: 'Already processed' });
+
+    const plan = intervention.restructuringPlan;
+    if (!plan) return res.status(400).json({ message: 'No plan details found' });
+
+    // Execute the repair
+    if (customer.customerType === 'RETAIL' && customer.mlFeatures?.retail) {
+      customer.mlFeatures.retail.annuity = plan.revisedEmi;
+    } else if (customer.customerType === 'MSME' && customer.mlFeatures?.msme) {
+      customer.mlFeatures.msme.installment = plan.revisedEmi;
+    }
+
+    if (customer.emiSchedule) {
+      customer.emiSchedule.forEach(emi => {
+        if (emi.status === 'PENDING' || emi.status === 'OVERDUE') {
+          emi.originalAmount = emi.amount;
+          emi.amount = plan.revisedEmi;
+          emi.isRestructured = true;
+          emi.description = `Restructured: ${emi.description || 'EMI Payment'}`;
+          if (emi.status === 'OVERDUE') emi.status = 'PENDING';
+        }
+      });
+    }
+
+    intervention.customerResponse = 'ACCEPTED';
+    await intervention.save();
+    await customer.save();
+
+    // Recalculate score (simplified for now)
+    const riskScore = await RiskScore.findOne({ customerId: customer._id }).sort({ asOfDate: -1 });
+    if (riskScore) {
+      riskScore.financialHealthScore = Math.min(100, Math.round(riskScore.financialHealthScore * 1.3)); 
+      riskScore.patternDetected = 'HEALTHY';
+      riskScore.priorityLevel = 'P5';
+      await riskScore.save();
+    }
+
+    await recordRiskTransactionOnChain(customerId, `Accepted Restructuring Plan: ${interventionId}`, riskScore.financialHealthScore, 'Green');
+
+    res.json({ success: true, message: 'Restructuring plan applied successfully!' });
   } catch (err) {
     next(err);
   }
@@ -91,9 +179,8 @@ const simulateScenario = async (req, res, next) => {
     }
 
     const latest = await RiskScore.findOne({ customerId: customer._id }).sort({ asOfDate: -1 });
-    const currentScore = latest?.financialHealthScore || 60;
-    let projectedScore = currentScore;
-    let explanations = [];
+    const score = latest ? latest.financialHealthScore : 45; // Default to critical for safety
+    const band = score > 80 ? 'EXCELLENT' : score > 60 ? 'STABLE' : score > 40 ? 'WATCH' : 'CRITICAL';
 
     try {
       if (customer.customerType === 'MSME') {
@@ -225,17 +312,19 @@ const requestCounsellor = async (req, res, next) => {
     const intervention = await Intervention.create({
       customerId: customer._id,
       riskScoreId: riskScore._id,
-      interventionType: 'COUNSELLOR_REFERRAL',
+      interventionType: 'EMI_RESTRUCTURE',
       channel: 'APP',
-      messagePreview: message || 'Customer requested counsellor via self-service portal',
+      messagePreview: message || 'Customer requested EMI Restructuring via portal',
       approvedBy: 'SELF_SERVICE',
+      adminStatus: 'PROPOSED',
+      customerResponse: 'PENDING',
       confidenceScore: 1.0,
     });
 
     await RiskScore.findByIdAndUpdate(riskScore._id, { 
       priorityLevel: 'P1', 
       status: 'PENDING',
-      patternDetected: 'CUSTOMER_ESCALATION'
+      patternDetected: 'RESTRUCTURING_REQUESTED'
     });
 
     res.json({

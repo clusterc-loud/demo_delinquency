@@ -95,15 +95,38 @@ const generateMessage = async (req, res, next) => {
       customer.customerType === 'MSME' ? customer.businessName || customer.name : customer.name;
 
     const template = MESSAGE_TEMPLATES[pattern] || MESSAGE_TEMPLATES.HEALTHY;
-    const message = template(displayName);
     const interventionType =
-      PATTERN_TO_INTERVENTION[pattern] || riskScore?.interventionRecommended || 'BUSINESS_ADVISORY';
+      riskScore?.interventionRecommended || PATTERN_TO_INTERVENTION[pattern] || 'BUSINESS_ADVISORY';
+      
+    let message = template(displayName);
+    if (pattern === 'HEALTHY' && (interventionType === 'EMI_RESTRUCTURE' || interventionType === 'PAYMENT_HOLIDAY')) {
+      message = `Dear ${displayName}, we've received your request for restructuring. Our AI has proposed a revised plan to support your business continuity.`;
+    }
+
+    // AI logic for explainability
+    const logic = riskScore?.dynamicExplainability || `Analysis of ${displayName}'s risk patterns suggests ${interventionType.replace('_', ' ')} due to ${pattern.replace('_', ' ')}.`;
+
+    let restructurePreview = null;
+    // Always provide a restructure workshop for HIGH RISK users to allow Admin intervention
+    if (interventionType === 'EMI_RESTRUCTURE' || interventionType === 'PAYMENT_HOLIDAY' || (riskScore?.financialHealthScore < 40)) {
+      const currentEmi = (customer.emiSchedule || []).find(e => e.status !== 'PAID')?.amount || 
+                         (customer.customerType === 'RETAIL' ? 15000 : 45000);
+      
+      restructurePreview = {
+        originalEmi: currentEmi,
+        revisedEmi: Math.round(currentEmi * 0.75),
+        tenureExtensionMonths: 6,
+        logic: logic
+      };
+    }
 
     res.json({
       message,
       confidenceScore: 0.85,
       interventionType,
       channel: 'SMS',
+      restructurePreview,
+      logic
     });
   } catch (err) {
     next(err);
@@ -114,110 +137,49 @@ const generateMessage = async (req, res, next) => {
 const approveIntervention = async (req, res, next) => {
   try {
     const { customerId } = req.params;
-    const { interventionType, channel, messagePreview, approvedBy } = req.body;
+    const { interventionType, channel, messagePreview, approvedBy, planDetails } = req.body;
 
     const customer = await Customer.findOne({ customerId });
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
     const riskScore = await RiskScore.findOne({ customerId: customer._id }).sort({ asOfDate: -1 });
-    if (!riskScore) {
-      return res.status(404).json({ message: 'No risk score found' });
-    }
+    if (!riskScore) return res.status(404).json({ message: 'No risk score found' });
 
-    const validInterventions = [
-      'PAYMENT_HOLIDAY', 'EMI_RESTRUCTURE', 'DEBT_CONSOLIDATION',
-      'WORKING_CAPITAL_LOAN', 'INVOICE_DISCOUNTING', 'BUSINESS_ADVISORY',
-      'COUNSELLOR_REFERRAL', 'CREDIT_LIMIT_ADJUSTMENT',
-    ];
-    const safeInterventionType = validInterventions.includes(interventionType)
-      ? interventionType
-      : (riskScore.interventionRecommended || 'BUSINESS_ADVISORY');
-
-    const intervention = await Intervention.create({
+    // Check if an existing intervention for this customer already exists (Transition flow)
+    let intervention = await Intervention.findOne({
       customerId: customer._id,
-      riskScoreId: riskScore._id,
-      interventionType: safeInterventionType,
-      channel: channel || 'SMS',
-      messagePreview: messagePreview ? messagePreview.slice(0, 200) : '',
-      approvedBy: approvedBy || 'EMP-0001',
-      confidenceScore: 0.85,
-    });
+      interventionType,
+      customerResponse: 'PENDING',
+      adminStatus: 'PROPOSED'
+    }).sort({ timestamp: -1 });
 
-    // [DYNAMIC FEATURE] Automagically repair the EMI schedule to represent real restructuring
-    if (safeInterventionType === 'EMI_RESTRUCTURE' && customer.mlFeatures) {
-      if (customer.customerType === 'RETAIL' && customer.mlFeatures.retail) {
-        customer.mlFeatures.retail.annuity = (customer.mlFeatures.retail.annuity || 0) * 0.7; // Reduce mathematical EMI burden by 30%
-        customer.mlFeatures.retail.adjCloseHistory = (customer.mlFeatures.retail.adjCloseHistory || []).map(v => v * 1.5); 
-      } else if (customer.customerType === 'MSME' && customer.mlFeatures.msme) {
-        customer.mlFeatures.msme.installment = (customer.mlFeatures.msme.installment || 0) * 0.7; // Reduce MSME installment by 30%
-      }
-      
-      // Update the actual dynamic EMI queue in the db for BOTH types
-      if (customer.emiSchedule && customer.emiSchedule.length > 0) {
-        customer.emiSchedule.forEach(emi => {
-          if (emi.status === 'PENDING' || emi.status === 'OVERDUE') {
-            emi.originalAmount = emi.amount;
-            emi.amount = emi.amount * 0.7; // Lower by 30%
-            emi.isRestructured = true;
-            emi.description = `Restructured: ${emi.description || 'EMI Payment'}`;
-            if (emi.status === 'OVERDUE') emi.status = 'PENDING'; // Clear penalty
-          }
-        });
-      }
-
-      await customer.save();
-
-      // Recalculate score immediately using the real ML service
-      try {
-        const mlService = require('../services/mlService');
-        let resScore;
-        
-        if (customer.customerType === 'RETAIL') {
-          const retail = customer.mlFeatures.retail;
-          resScore = await mlService.predictRetail({
-            customer_id: customerId,
-            AMT_INCOME_TOTAL: retail.income || 500000,
-            AMT_CREDIT: retail.creditAmount || 100000,
-            AMT_ANNUITY: retail.annuity,
-            AMT_GOODS_PRICE: retail.goodsPrice || 100000,
-            REGION_POPULATION_RELATIVE: retail.regionRating || 0.02,
-            DAYS_BIRTH: -10000,
-            DAYS_EMPLOYED: retail.daysEmployed || -1000,
-            EXT_SOURCE_2: retail.externalSource2 || 0.5,
-            EXT_SOURCE_3: retail.externalSource3 || 0.5,
-            adj_close_history: retail.adjCloseHistory || []
-          });
-          riskScore.financialHealthScore = resScore.score;
-        } else {
-          const msme = customer.mlFeatures.msme;
-          resScore = await mlService.predictMSME({
-            ...msme,
-            customer_id: customerId
-          });
-          riskScore.financialHealthScore = resScore.vitt_chetak_index;
-        }
-
-        riskScore.patternDetected = 'HEALTHY';
-        riskScore.priorityLevel = 'P5';
-      } catch (err) {
-        console.error('ML Recovery Score Calculation Failed:', err.message);
-        // Fallback if ML service is actually down
-        riskScore.financialHealthScore = Math.min(100, (riskScore.financialHealthScore || 50) + 20);
-      }
+    if (intervention) {
+      // Transition EXISTING intervention
+      intervention.adminStatus = 'APPROVED';
+      intervention.channel = channel || intervention.channel;
+      intervention.messagePreview = messagePreview || intervention.messagePreview;
+      intervention.restructuringPlan = planDetails || intervention.restructuringPlan;
+      intervention.approvedBy = approvedBy || 'ADMIN_WORKSHOP';
+      await intervention.save();
+    } else {
+      // Create NEW intervention (Proactive flow)
+      intervention = await Intervention.create({
+        customerId: customer._id,
+        riskScoreId: riskScore._id,
+        interventionType,
+        channel: channel || 'APP',
+        messagePreview: messagePreview || '',
+        approvedBy: approvedBy || 'ADMIN',
+        adminStatus: 'APPROVED',
+        customerResponse: 'PENDING',
+        restructuringPlan: planDetails || null,
+        confidenceScore: 0.9
+      });
     }
 
-    await RiskScore.findByIdAndUpdate(riskScore._id, { 
-      status: 'INTERVENED',
-      financialHealthScore: riskScore.financialHealthScore,
-      patternDetected: riskScore.patternDetected,
-      priorityLevel: riskScore.priorityLevel
-    });
+    await RiskScore.findByIdAndUpdate(riskScore._id, { status: 'INTERVENED' });
 
-    const txId = await recordRiskTransactionOnChain(customer.customerId, `Approved: ${safeInterventionType}`, riskScore.financialHealthScore, 'Green');
-
-    res.json({ success: true, intervention, newScore: riskScore.financialHealthScore, txId });
+    res.json({ success: true, intervention, message: 'Plan sent to customer for final acceptance.' });
   } catch (err) {
     next(err);
   }

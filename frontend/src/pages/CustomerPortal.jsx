@@ -36,6 +36,7 @@ export default function CustomerPortal() {
     try {
       await api.post(`/portal/${id}/request-counsellor`);
       addToast('Counsellor request submitted! We\'ll contact you within 24 hours.', 'success');
+      await refreshData();
     } catch {
       addToast('Request submitted (demo mode).', 'warning');
     } finally {

@@ -56,6 +56,9 @@ const customerSchema = new mongoose.Schema({
   gstNumber: { type: String },
   annualTurnoverBand: { type: String },
   employeeCount: { type: Number },
+  supplyChainPartners: [
+    { name: { type: String }, status: { type: String, enum: ['STABLE', 'WATCH', 'CRITICAL'] }, health: { type: Number }, exposure: { type: String } }
+  ],
   // Alert preferences (portal)
   alertPreferences: {
     lowBalance: { type: Boolean, default: true },
@@ -82,6 +85,7 @@ const customerSchema = new mongoose.Schema({
       portion: Number,
       dti: Number,
       annualIncome: Number,
+      revolUtil: Number,
     },
     // Retail Logic (R1, R2, R3)
     retail: {

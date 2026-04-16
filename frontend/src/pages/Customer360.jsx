@@ -179,6 +179,26 @@ export default function Customer360() {
 
           {/* Right Content Column */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
+            {/* Business Vitals (MSME Only) */}
+            {profile.segment === 'MSME' && (
+              <div className="bg-white rounded-xl p-8 shadow-sm border border-[#bccbb9]/10">
+                <h3 className="text-lg font-bold mb-6 text-[#131e17]">Business Vitals</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Industry', value: profile.industrySector || 'General' },
+                    { label: 'Business Age', value: `${profile.businessAgeYears || 0} Yrs` },
+                    { label: 'Turnover', value: profile.annualTurnoverBand || 'N/A' },
+                    { label: 'Utilization', value: `${((profile.mlFeatures?.msme?.revolUtil || 0) * 100).toFixed(1)}%` },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-[#f0fdf1] p-3 rounded-lg border border-[#1db954]/10">
+                      <p className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest">{stat.label}</p>
+                      <p className="text-sm font-black text-[#131e17] mt-1">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Risk Dimensions */}
             <div className="bg-white rounded-xl p-8 shadow-sm border border-[#bccbb9]/10">
               <h3 className="text-lg font-bold mb-6 text-[#131e17]">Risk Dimensions</h3>
@@ -199,6 +219,46 @@ export default function Customer360() {
                 ))}
               </div>
             </div>
+
+            {/* Supply Chain Graph (MSME Only) */}
+            {profile.segment === 'MSME' && profile.supplyChainPartners?.length > 0 && (
+              <div className="bg-white rounded-xl p-8 shadow-sm border border-[#bccbb9]/10">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-bold text-[#131e17]">Supply Chain Relationship Graph</h3>
+                  <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#006e2d]" /> Stable</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-yellow-500" /> Watch</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#ba1a1a]" /> Critical</div>
+                  </div>
+                </div>
+                <div className="relative h-48 bg-[#f0fdf1]/30 rounded-2xl flex items-center justify-center border border-dashed border-[#1db954]/20">
+                   {/* Main Node */}
+                   <div className="z-10 bg-[#006e2d] text-white p-4 rounded-2xl shadow-lg border-4 border-white flex flex-col items-center">
+                      <span className="text-[10px] font-bold opacity-70 uppercase">Anchor</span>
+                      <span className="text-xs font-black">{profile.businessName?.split(' ')[0] || 'Entity'}</span>
+                   </div>
+                   
+                   {/* Connections and Partner Nodes */}
+                   {profile.supplyChainPartners.map((partner, i) => {
+                      const angle = (i * (360 / profile.supplyChainPartners.length)) * (Math.PI / 180);
+                      const x = Math.cos(angle) * 110;
+                      const y = Math.sin(angle) * 70;
+                      const color = partner.status === 'STABLE' ? '#006e2d' : partner.status === 'WATCH' ? '#eab308' : '#ba1a1a';
+                      return (
+                        <div key={partner.name} className="absolute" style={{ transform: `translate(${x}px, ${y}px)` }}>
+                           {/* Line to center */}
+                           <div className="absolute top-1/2 left-1/2 w-[110px] h-[2px] opacity-20 origin-left" style={{ background: color, transform: `rotate(${angle + Math.PI}rad) translateX(20px)` }} />
+                           <div className="relative z-10 bg-white p-2 rounded-xl border-2 shadow-sm flex flex-col items-center min-w-[80px]" style={{ borderColor: color }}>
+                              <span className="text-[9px] font-black whitespace-nowrap">{partner.name}</span>
+                              <span className="text-[8px] font-bold opacity-60">{partner.health}% Health</span>
+                           </div>
+                        </div>
+                      )
+                   })}
+                </div>
+                <p className="mt-4 text-[11px] text-[#3d4a3d] italic text-center">AI Analysis: High exposure to {profile.supplyChainPartners.find(p => p.status === 'CRITICAL')?.name || 'upstream'} disruption.</p>
+              </div>
+            )}
 
             {/* Network Risk */}
             <div className="bg-[#ffdad6]/30 border border-[#ba1a1a]/10 rounded-xl p-6">

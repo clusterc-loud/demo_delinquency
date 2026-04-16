@@ -30,6 +30,9 @@ const riskScoreSchema = new mongoose.Schema({
       'DEBT_SPIRAL',
       'SAVINGS_DEPLETION',
       'WORKING_CAPITAL_CRUNCH',
+      'SUPPLY_CHAIN_SHOCK',
+      'REVENUE_CRUNCH',
+      'FRAUDULENT_INVOICING',
       'DEMAND_COLLAPSE',
       'INPUT_COST_SHOCK',
       'CUSTOMER_CONCENTRATION',
@@ -106,6 +109,10 @@ const riskScoreSchema = new mongoose.Schema({
     min: 1,
     max: 8,
     default: 1,
+  },
+  dynamicExplainability: {
+    type: String,
+    default: "AI Analysis: Stable repayment history with moderate credit utilization.",
   },
 });
 

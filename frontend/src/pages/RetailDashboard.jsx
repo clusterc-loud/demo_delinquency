@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, Settings, ArrowRight, HelpCircle, Wallet, MessageSquare, LogOut, ShieldAlert, HeartPulse, X, Send, AlertTriangle } from 'lucide-react';
+import { Search, Bell, Settings, ArrowRight, HelpCircle, Wallet, MessageSquare, LogOut, ShieldAlert, HeartPulse, X, Send, AlertTriangle, Zap, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -45,6 +45,16 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi,
        addToast('Failed to send message', 'error');
     } finally {
        setChatSending(false);
+    }
+  };
+
+  const handleAcceptRestructure = async (interventionId) => {
+    try {
+      await api.post(`/portal/${data.customerId}/accept-restructure`, { interventionId });
+      addToast('Plan accepted! Your debt schedule has been updated.', 'success');
+      window.location.reload();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to accept plan', 'error');
     }
   };
 
@@ -107,7 +117,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi,
 
         <div className="p-8 space-y-8">
           {/* AI Proactive Banner */}
-          {(data.score < 50 || (data.emiSchedule && data.emiSchedule.some(e => e.status === 'OVERDUE'))) && (
+          {(data.score < 70 || (data.emiSchedule && data.emiSchedule.some(e => e.status === 'OVERDUE'))) && !data.restructuringProposal && !data.hasPendingRequest && (
             <div className="bg-[#ffdad6] border-[1.5px] border-[#ba1a1a]/20 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-[#ba1a1a]/5 rounded-full blur-2xl font-bold animate-pulse" />
                <div className="relative z-10 w-full">
@@ -121,6 +131,81 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi,
                <button onClick={onHelpSelect} className="shrink-0 bg-[#ba1a1a] text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md hover:bg-[#93000a] transition-colors whitespace-nowrap relative z-10">
                  Intervene Now
                </button>
+            </div>
+          )}
+
+          {/* Restructuring Center (Retail Proposal) */}
+          {data.restructuringProposal && (
+            <div className="bg-white rounded-2xl border-2 border-emerald-600 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <div className="bg-emerald-900 p-6 flex justify-between items-center text-white">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/10 p-3 rounded-xl"><Zap className="w-8 h-8 text-amber-400" /></div>
+                  <div>
+                    <h3 className="text-xl font-bold">Personalized Relief Plan</h3>
+                    <p className="text-sm opacity-60">AI-optimized restructuring to protect your credit health.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
+                <div className="lg:col-span-12">
+                   <h4 className="text-xs font-black text-emerald-900 uppercase tracking-widest mb-4">Why we suggested this?</h4>
+                   <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex flex-col gap-4">
+                      {data.restructuringProposal.messagePreview && (
+                        <div className="w-full bg-emerald-900 shadow-sm border-l-4 border-emerald-500 p-4 rounded-r-xl">
+                          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5"/> Official Message from Admin
+                          </p>
+                          <p className="text-sm italic text-emerald-50 leading-relaxed font-medium">"{data.restructuringProposal.messagePreview}"</p>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-4">
+                        <MessageSquare className="w-6 h-6 text-emerald-600 shrink-0 mt-1" />
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">AI Logic Formulation</p>
+                          <p className="text-sm italic text-emerald-950 font-medium">"{data.restructuringProposal.restructuringPlan?.logic}"</p>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+                
+                <div className="lg:col-span-7">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase tracking-widest mb-4">Revised Repayment Structure</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Old EMI</p>
+                      <p className="text-xl font-black line-through opacity-40">₹{data.restructuringProposal.restructuringPlan?.originalEmi?.toLocaleString()}</p>
+                    </div>
+                    <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200">
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">New Monthly EMI</p>
+                      <p className="text-2xl font-black text-emerald-800">₹{data.restructuringProposal.restructuringPlan?.revisedEmi?.toLocaleString()}</p>
+                    </div>
+                    <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Current Tenure</p>
+                      <p className="text-xl font-black opacity-60">Standard</p>
+                    </div>
+                    <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200">
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">New Tenure</p>
+                      <p className="text-2xl font-black text-emerald-800">+{data.restructuringProposal.restructuringPlan?.tenureExtensionMonths} Months Extension</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-5 flex flex-col justify-between">
+                   <div className="p-6 bg-emerald-950 text-white rounded-2xl shadow-inner">
+                      <h5 className="font-bold mb-2">ML Confidence Index</h5>
+                      <p className="text-xs opacity-70 mb-4">Our model predicts a 92% recovery probability if this plan is followed.</p>
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-400 w-[92%]"></div>
+                      </div>
+                   </div>
+                   <button 
+                    onClick={() => handleAcceptRestructure(data.restructuringProposal._id)}
+                    className="w-full py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-3 mt-4"
+                   >
+                     Confirm & Accept New Plan <CheckCircle className="w-5 h-5" />
+                   </button>
+                </div>
+              </div>
             </div>
           )}
 

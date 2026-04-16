@@ -27,7 +27,9 @@ const predictMSME = async (data) => {
       gr_appv: data.grAppv || data.gr_appv || 50000,
       sba_appv: data.sbaAppv || data.sba_appv || 40000,
       real_estate: data.realEstate || data.real_estate || 0,
-      portion: data.portion || 0.8
+      portion: data.portion || 0.8,
+      bus_age: data.busAge || 5,
+      industry: data.industry || 0
     };
     const response = await axios.post(`${ML_SERVICE_URL}/predict/msme`, payload);
     return response.data;

@@ -59,6 +59,17 @@ const interventionSchema = new mongoose.Schema({
     min: 0,
     max: 1,
   },
+  restructuringPlan: {
+    originalEmi: Number,
+    revisedEmi: Number,
+    tenureExtensionMonths: Number,
+    logic: String,
+  },
+  adminStatus: {
+    type: String,
+    enum: ['PROPOSED', 'APPROVED', 'REJECTED'],
+    default: 'PROPOSED',
+  },
 });
 
 module.exports = mongoose.model('Intervention', interventionSchema);

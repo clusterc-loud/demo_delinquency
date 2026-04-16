@@ -47,6 +47,7 @@ export default function InterventionQueue() {
   const [chatHistory, setChatHistory] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
+  const [restructurePlan, setRestructurePlan] = useState(null);
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -64,8 +65,14 @@ export default function InterventionQueue() {
     try {
       const { data } = await api.get(`/interventions/${customer.id}/generate-message`);
       setMessage(data?.message || 'Default system message generated.');
+      if (data?.restructurePreview) {
+        setRestructurePlan(data.restructurePreview);
+      } else {
+        setRestructurePlan(null);
+      }
     } catch {
       setMessage('Fallback generic message generated for Restructure processing.');
+      setRestructurePlan(null);
     } finally {
       setGenerating(false);
     }
@@ -135,7 +142,8 @@ export default function InterventionQueue() {
         channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), 
         messagePreview: message, 
         interventionType: selected.interventionType,
-        approvedBy: 'ADMIN_HACKATHON'
+        approvedBy: 'ADMIN_HACKATHON',
+        planDetails: (selected.interventionType === 'EMI_RESTRUCTURE' || selected.interventionType === 'PAYMENT_HOLIDAY') ? restructurePlan : null
       });
       addToast(`Intervention sent to ${selected.name}`, 'success');
       setQueue((prev) => prev.filter((q) => q.id !== selected.id));
@@ -159,7 +167,7 @@ export default function InterventionQueue() {
   return (
     <div className="bg-[#f0fdf1] text-[#131e17] min-h-screen">
       <Sidebar />
-      <main className="ml-64 flex h-screen">
+      <main className="ml-64 flex h-screen overflow-hidden">
         {/* Left Queue Panel */}
         <div className="w-[40%] border-r border-[#e4f1e5] flex flex-col">
           <div className="p-6 border-b border-[#e4f1e5]">
@@ -243,8 +251,8 @@ export default function InterventionQueue() {
               </div>
             </div>
 
-            {/* Message Preview */}
-            <div className="flex-1 overflow-y-auto p-8 bg-[#eaf7eb]">
+            {/* Content Area */}
+            <div className={`flex-1 overflow-y-auto p-8 bg-[#eaf7eb] ${restructurePlan ? 'pt-4' : ''}`}>
               {/* Dynamic Chat History */}
               <div className="mb-8 space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -275,6 +283,53 @@ export default function InterventionQueue() {
                 </div>
               </div>
               
+              {/* Restructuring Workshop (If applicable) */}
+              {restructurePlan && (
+                <div className="mb-8 p-6 bg-white rounded-xl border-2 border-[#1db954]/20 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-2 opacity-5"><Zap className="w-16 h-16" /></div>
+                  <h3 className="text-sm font-black text-[#131e17] uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-500" /> Restructuring Workshop (Editable)
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Original EMI</label>
+                      <p className="text-sm font-black text-gray-400">₹{restructurePlan.originalEmi.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Proposed EMI</label>
+                      <input 
+                        type="number" 
+                        value={restructurePlan.revisedEmi} 
+                        onChange={e => setRestructurePlan({...restructurePlan, revisedEmi: Number(e.target.value)})}
+                        className="bg-[#f0fdf1] border-none rounded-lg px-3 py-1 text-sm font-black w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Extension (Months)</label>
+                      <input 
+                        type="number" 
+                        value={restructurePlan.tenureExtensionMonths} 
+                        onChange={e => setRestructurePlan({...restructurePlan, tenureExtensionMonths: Number(e.target.value)})}
+                        className="bg-[#f0fdf1] border-none rounded-lg px-3 py-1 text-sm font-black w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Projected Score Recovery</label>
+                      <p className="text-sm font-black text-[#006e2d]">+{Math.round((1 - restructurePlan.revisedEmi/restructurePlan.originalEmi) * 100)}% Boost</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Explainability Logic (Sent to Customer)</label>
+                    <textarea 
+                      value={restructurePlan.logic}
+                      onChange={e => setRestructurePlan({...restructurePlan, logic: e.target.value})}
+                      className="w-full bg-[#f0fdf1] border-none rounded-lg px-4 py-2 text-xs italic leading-relaxed"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2 mb-4 mt-8">
                 <Zap className="w-4 h-4 text-[#006e2d]" />
                 <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">AI-Generated {activeType} Reply Preview</span>
@@ -292,58 +347,33 @@ export default function InterventionQueue() {
                   </pre>
                 )}
               </div>
-            </div>
-
-            {/* Action Footer */}
-            <div className="border-t border-[#e4f1e5] px-8 py-5 bg-white flex justify-between items-center">
+            </div>            {/* Action Footer - High Contrast Floating Bar */}
+            <div className="border-t border-emerald-900 bg-[#062411] px-10 py-6 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50">
               <button
                 onClick={handleRouteRM}
-                className="flex items-center gap-2 text-sm font-bold text-[#3d4a3d] px-4 py-2 rounded-xl hover:bg-[#eaf7eb] transition-colors"
+                className="flex items-center gap-2 text-sm font-bold text-emerald-100/70 px-4 py-2 rounded-xl hover:bg-white/5 transition-colors"
               >
                 <UserCheck className="w-4 h-4" />
                 Route to Counsellor
               </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={async () => {
-                    setSendingTo(selected.id);
-                    try {
-                      const res = await api.post(`/interventions/${selected.id}/approve`, { 
-                        channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), 
-                        messagePreview: message, 
-                        interventionType: 'EMI_RESTRUCTURE',
-                        approvedBy: 'ADMIN_HACKATHON'
-                      });
-                      addToast(`Restructured EMI. Risk Score recovered to ${res.data.newScore}`, 'success');
-                      setQueue((prev) => prev.filter((q) => q.id !== selected.id));
-                      setSelected(null);
-                    } catch {
-                      addToast('Failed to restructure.', 'error');
-                    } finally {
-                      setSendingTo(null);
-                    }
-                  }}
-                  className="text-sm font-bold px-4 py-2 rounded-xl bg-[#eaf7eb] text-[#006e2d] hover:bg-[#d4f0d7] transition-colors"
-                >
-                  🛠 Restructure EMI
-                </button>
+              <div className="flex gap-4">
                 <button
                   onClick={generateMessage.bind(null, selected)}
-                  className="text-sm font-bold px-4 py-2 rounded-xl border border-[#bccbb9] hover:bg-[#eaf7eb] transition-colors"
+                  className="text-sm font-bold px-5 py-2.5 rounded-xl border border-emerald-700/50 text-emerald-100 hover:bg-emerald-900 transition-colors"
                 >
                   Regenerate
                 </button>
                 <button
                   onClick={handleApprove}
                   disabled={sendingTo === selected.id || generating}
-                  className="flex items-center gap-2 bg-[#006e2d] text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-[#004118] transition-colors disabled:opacity-60"
+                  className="flex items-center gap-3 bg-[#1db954] text-white text-sm font-black px-8 py-3 rounded-xl hover:bg-[#159a43] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                 >
                   {sendingTo === selected.id ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <Send className="w-5 h-5" />
                   )}
-                  Approve & Send
+                  APPROVE & SEND
                 </button>
               </div>
             </div>

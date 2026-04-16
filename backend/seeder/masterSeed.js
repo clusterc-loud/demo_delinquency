@@ -1,4 +1,5 @@
-require('dotenv').config({ path: '../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
@@ -41,7 +42,10 @@ const seedData = async () => {
                         creditAmount: 150000,
                         annuity: 8000,
                         externalSource2: 0.32,
-                        adjCloseHistory: [100, 80, 60, 45, 30]
+                        adjCloseHistory: [100, 80, 60, 45, 30],
+                        age: 32,
+                        familyMembers: 4,
+                        daysEmployed: -1200
                     }
                 },
                 emiSchedule: [
@@ -55,15 +59,34 @@ const seedData = async () => {
                 email: 'anil.logistics@example.com',
                 password: 'password123',
                 customerType: 'MSME',
+                industrySector: 'Logistics',
+                businessAgeYears: 5,
                 gstNumber: '27AAAAA0000A1Z5',
+                annualTurnoverBand: '₹10Cr - ₹25Cr',
+                employeeCount: 45,
                 mlFeatures: {
                     msme: {
-                        annualIncome: 4500000,
-                        loanAmount: 2000000,
-                        disbursementGross: 1000000,
-                        revolUtil: 0.85
+                        annualIncome: 150000000,
+                        loanAmount: 20000000,
+                        disbursementGross: 10000000,
+                        revolUtil: 0.82,
+                        busAge: 5,
+                        industry: 4, // Logistics code
+                        dti: 0.45
                     }
-                }
+                },
+                supplyChainPartners: [
+                    { name: 'Adani Ports', status: 'STABLE', health: 92, exposure: '₹45L' },
+                    { name: 'Maersk India', status: 'WATCH', health: 58, exposure: '₹28L' },
+                    { name: 'BlueDart Express', status: 'STABLE', health: 85, exposure: '₹12L' }
+                ],
+                emiSchedule: [
+                    { emiId: 'EMI-A1', amount: 45000, dueDate: new Date(Date.now() - 30 * 24 * 3600000), status: 'OVERDUE', description: 'Working Capital Loan' },
+                    { emiId: 'EMI-A2', amount: 45000, dueDate: new Date(Date.now() - 60 * 24 * 3600000), status: 'OVERDUE', description: 'Working Capital Loan' },
+                    { emiId: 'EMI-A3', amount: 45000, dueDate: new Date(Date.now() - 90 * 24 * 3600000), status: 'OVERDUE', description: 'Working Capital Loan' },
+                    { emiId: 'EMI-A4', amount: 45000, dueDate: new Date(), status: 'OVERDUE', description: 'Working Capital Loan' },
+                    { emiId: 'EMI-A5', amount: 45000, dueDate: new Date(Date.now() + 30 * 24 * 3600000), status: 'PENDING', description: 'Working Capital Loan' }
+                ]
             },
             {
                 customerId: 'RETAIL-003',
@@ -77,7 +100,10 @@ const seedData = async () => {
                         creditAmount: 50000,
                         annuity: 2000,
                         externalSource2: 0.88,
-                        adjCloseHistory: [100, 105, 110, 115, 120]
+                        adjCloseHistory: [100, 105, 110, 115, 120],
+                        age: 28,
+                        familyMembers: 1,
+                        daysEmployed: -3500
                     }
                 }
             },
@@ -88,15 +114,27 @@ const seedData = async () => {
                 email: 'vikram.exports@example.com',
                 password: 'password123',
                 customerType: 'MSME',
+                industrySector: 'Textiles',
+                businessAgeYears: 12,
                 gstNumber: '09BBBBB1111B2Z6',
+                annualTurnoverBand: '₹25Cr - ₹50Cr',
+                employeeCount: 120,
                 mlFeatures: {
                     msme: {
-                        annualIncome: 8000000,
-                        loanAmount: 500000,
-                        disbursementGross: 400000,
-                        revolUtil: 0.15
+                        annualIncome: 450000000,
+                        loanAmount: 5000000,
+                        disbursementGross: 4000000,
+                        revolUtil: 0.15,
+                        busAge: 12,
+                        industry: 7, // Textile code
+                        dti: 0.12
                     }
-                }
+                },
+                supplyChainPartners: [
+                    { name: 'Pantaloon Retail', status: 'STABLE', health: 88, exposure: '₹1.2Cr' },
+                    { name: 'Siyaram Silks', status: 'STABLE', health: 91, exposure: '₹85L' },
+                    { name: 'Surat Fabrics', status: 'CRITICAL', health: 32, exposure: '₹42L' }
+                ]
             },
             {
                 customerId: 'RETAIL-005',
@@ -110,7 +148,10 @@ const seedData = async () => {
                         creditAmount: 800000,
                         annuity: 15000,
                         externalSource2: 0.45,
-                        adjCloseHistory: [100, 95, 90, 85, 80]
+                        adjCloseHistory: [100, 95, 90, 85, 80],
+                        age: 45,
+                        familyMembers: 5,
+                        daysEmployed: -500
                     }
                 }
             }
@@ -120,7 +161,7 @@ const seedData = async () => {
         const createdCustomers = [];
         for (const cData of customers) {
             const c = new Customer(cData);
-            await c.save(); // This triggers the pre('save') hook
+            await c.save(); 
             createdCustomers.push(c);
         }
 
@@ -131,17 +172,19 @@ const seedData = async () => {
                 financialHealthScore: 28,
                 priorityLevel: 'P1',
                 status: 'PENDING',
-                patternDetected: 'LIQUIDITY_CRUNCH',
-                dimensionScores: { liquidityIndex: 28, debtBurden: 85, networkRisk: 10 },
+                patternDetected: 'EXPENSE_SHOCK',
+                interventionRecommended: 'EMI_RESTRUCTURE',
+                dimensionScores: { 'Cash Flow': 28, 'Debt Servicing': 45, 'Market Risk': 55 },
                 asOfDate: new Date()
             },
             {
                 customerId: createdCustomers[1]._id,
-                financialHealthScore: 34,
+                financialHealthScore: 22,
                 priorityLevel: 'P1',
                 status: 'PENDING',
-                patternDetected: 'INCOME_DISRUPTION',
-                dimensionScores: { liquidityIndex: 30, debtBurden: 70, networkRisk: 65 },
+                patternDetected: 'EXPENSE_SHOCK',
+                interventionRecommended: 'EMI_RESTRUCTURE',
+                dimensionScores: { 'Capital Velocity': 15, 'Ecosystem Risk': 22, 'Operational continuity': 31 },
                 asOfDate: new Date()
             },
             {
@@ -158,7 +201,7 @@ const seedData = async () => {
                 priorityLevel: 'P4',
                 status: 'RESOLVED',
                 patternDetected: 'HEALTHY',
-                fraudScore: 82,
+                fraudScore: 12,
                 asOfDate: new Date()
             },
             {
@@ -184,13 +227,13 @@ const seedData = async () => {
             {
                 customerId: 'MSME-002',
                 messages: [
-                    { sender: 'CUSTOMER', text: 'Our supply chain is disrupted. We need an urgent working capital extension.', timestamp: new Date(Date.now() - 7200000) }
+                    { sender: 'CUSTOMER', text: 'Our supply chain is disrupted due to a major supplier default. We need an urgent working capital extension.', timestamp: new Date(Date.now() - 7200000), unreadByAdmin: true }
                 ]
             }
         ];
         await Chat.insertMany(initialChats);
 
-        console.log('Master Seed Complete! 5 Curated Personas and 1 Admin User created.');
+        console.log('Master Seed Complete! MSME personas hardened.');
         process.exit();
     } catch (error) {
         console.error('Seed Failed:', error);

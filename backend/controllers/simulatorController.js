@@ -76,8 +76,12 @@ const simulateMSMETransaction = async (req, res, next) => {
 
     if (action === 'REVENUE_DROP') {
       msme.annualIncome = (msme.annualIncome || 5000000) * 0.4; // 60% drop
-      msme.disbursementGross = (msme.disbursementGross || 1000000) * 0.5;
+      msme.revolUtil = Math.min(1.0, (msme.revolUtil || 0.5) * 1.8); // 80% increase in utilization
+      msme.dti = Math.min(1.0, (msme.dti || 0.3) * 1.5);
       transactionInfo = 'SUPPLY_CHAIN_DISRUPTION_DETECTED';
+    } else if (action === 'LATE_PAYMENT') {
+      msme.revolUtil = Math.min(1.0, (msme.revolUtil || 0.5) * 1.2);
+      transactionInfo = 'LATE_RECEIVABLE_ENTRY';
     } else if (action === 'FRAUD_ALERT') {
       fraudScore = 92;
       transactionInfo = 'SUSPICIOUS_B2B_INVOICE_PATTERN';
