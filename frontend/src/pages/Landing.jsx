@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Activity, Bell, Settings, Building2, Shield, Brain, Network } from 'lucide-react';
+import { ArrowRight, Activity, Building2, Shield, Brain, Network } from 'lucide-react';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -37,15 +37,7 @@ export default function Landing() {
           <a href="#" className="text-gray-300 hover:text-white transition-colors text-sm font-semibold font-headline hover:bg-[#1db954]/10 px-2 py-1 rounded">Technology</a>
           <a href="#" className="text-gray-300 hover:text-white transition-colors text-sm font-semibold font-headline hover:bg-[#1db954]/10 px-2 py-1 rounded">Security</a>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-gray-300">
-            <Bell className="w-5 h-5 hover:text-[#1db954] transition-all cursor-pointer" />
-            <Settings className="w-5 h-5 hover:text-[#1db954] transition-all cursor-pointer" />
-          </div>
-          <div className="w-8 h-8 rounded-full bg-[#d9e6da] overflow-hidden flex items-center justify-center text-[#131e17] font-bold text-sm">
-            A
-          </div>
-        </div>
+        <div></div>
       </nav>
 
       {/* Hero Section */}

@@ -3,12 +3,15 @@ import { Search, Bell, Settings, ArrowRight, HelpCircle, Wallet, MessageSquare, 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { useTranslation } from '../i18n/LanguageContext';
+import LanguageToggle from '../components/LanguageToggle';
 import api from '../api/axios';
 
 export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { t, dateLocale } = useTranslation();
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [chatOpen, setChatOpen] = useState(false);
@@ -19,7 +22,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
 
   const handleLogout = () => {
     logout();
-    navigate('/customer-login');
+    navigate('/');
   };
 
   const handleInactiveFeature = (feature) => {
@@ -69,6 +72,20 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
     }
   };
 
+  // Translate status labels
+  const getStatusLabel = (status) => {
+    if (status === 'PAID') return t('status.paid');
+    if (status === 'OVERDUE') return t('status.overdue');
+    return t('status.pending');
+  };
+
+  // Translate band labels
+  const getBandLabel = (band) => {
+    if (!band) return t('band.excellent');
+    const key = band.toLowerCase().replace(' ', '_');
+    return t(`band.${key}`) || band.replace('_', ' ');
+  };
+
   if (loading || !data) return <div className="p-8 text-on-surface">Loading...</div>;
 
   return (
@@ -77,37 +94,36 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
       <aside className="hidden md:flex flex-col h-full py-6 bg-emerald-50 dark:bg-emerald-950 w-64 border-r-0 font-['Plus_Jakarta_Sans'] font-medium antialiased shrink-0 min-h-screen">
         <div className="px-8 mb-10">
           <h1 className="text-2xl font-bold text-emerald-900 dark:text-emerald-50 tracking-tight">VittChetak</h1>
-          <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mt-1">Premium Growth Tier</p>
+          <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mt-1">{t('nav.premiumTier')}</p>
         </div>
         <nav className="flex-1 px-4 space-y-2">
-          {/* Active Tab: Dashboard */}
           <button onClick={() => setActiveTab('dashboard')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'dashboard' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">dashboard</span>
-            <span>Dashboard</span>
+            <span>{t('nav.dashboard')}</span>
           </button>
           <button onClick={() => setActiveTab('emi')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'emi' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">receipt_long</span>
-            <span>EMI Transactions</span>
+            <span>{t('nav.emiTransactions')}</span>
           </button>
           <button onClick={() => setActiveTab('health')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'health' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">health_and_safety</span>
-            <span>Financial Health</span>
+            <span>{t('nav.financialHealth')}</span>
           </button>
           <button onClick={() => setActiveTab('support')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'support' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">help_center</span>
-            <span>Support Hub</span>
+            <span>{t('nav.supportHub')}</span>
           </button>
         </nav>
         <div className="mt-auto px-4 pb-4">
           <button onClick={() => handleInactiveFeature('Pro AI Insights')} className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-primary text-on-primary rounded-lg font-bold text-sm shadow-xl shadow-primary/10 hover:opacity-90 transition-opacity">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-            AI Insights
+            {t('nav.aiInsights')}
           </button>
           <div className="mt-6 px-4 flex items-center gap-3">
             <img alt="User profile photo" className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt530Pm_OOXTQ2YTDeTI1SvWDHvy_c30n2kP0Yd7Yv_PCdTbFPKc4DUkc6-pgWSbrkouskKfTAJ5D1wfyoLUf99pJjMsZlMv8G3BtWeoxZTUW4rSnWOA9L_FQjzgEF_2MS2wRYJBdXA5Y1t0AWoLcBbe3m2TNSQpXrXBpoQ_TRmA2lo58qB4lN76tRu1beHuURqvRmeb5Q06_jFG_I4hqAMnqPysu6rk2gvmfGrhZk3TC5kEwpcALQRRvQvTVPVWij_tE8-Km7wQ"/>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-on-surface truncate">{data.name}</p>
-              <p className="text-[10px] text-on-surface-variant">Growth Member</p>
+              <p className="text-[10px] text-on-surface-variant">{t('nav.growthMember')}</p>
             </div>
           </div>
           {/* Sign Out Button */}
@@ -116,7 +132,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
             className="w-full mt-4 text-emerald-800/70 dark:text-emerald-200/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:text-green-600 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 font-bold"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm">Sign Out</span>
+            <span className="text-sm">{t('nav.signOut')}</span>
           </button>
         </div>
       </aside>
@@ -128,7 +144,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
           <div className="flex items-center gap-4 flex-1 max-w-md">
             <div className="relative w-full">
               <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg" />
-              <input className="w-full bg-surface-container-highest border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/60" placeholder="Search transactions or tools..." type="text"/>
+              <input className="w-full bg-surface-container-highest border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-primary/30 text-sm placeholder:text-on-surface-variant/60" placeholder={t('search.placeholder')} type="text"/>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -150,14 +166,14 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#ba1a1a]/5 rounded-full blur-2xl font-bold animate-pulse" />
               <div className="relative z-10 w-full">
                 <h3 className="font-bold text-[#ba1a1a] flex items-center gap-2 text-lg">
-                  🚨 AI Proactive Delinquency Prediction
+                  {t('warning.title')}
                 </h3>
                 <p className="text-sm text-[#93000a] mt-1 pr-4 font-medium">
-                  Based on your current income-to-debt ratio, our ML Engine projects a high probability of missing your upcoming EMIs within 30 days. Let us help you restructuring your loans to avoid a catastrophic default.
+                  {t('warning.description')}
                 </p>
               </div>
               <button onClick={onHelpSelect} className="shrink-0 bg-[#ba1a1a] text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md hover:bg-[#93000a] transition-colors whitespace-nowrap relative z-10">
-                Contact Bank Admin
+                {t('warning.contactAdmin')}
               </button>
             </div>
           )}
@@ -169,17 +185,17 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
             {/* Welcome Card */}
             <div className="lg:col-span-2 bg-gradient-to-br from-[#004f20] to-[#006e2d] rounded-lg p-8 text-on-primary flex flex-col justify-between min-h-[240px] relative overflow-hidden shadow-xl shadow-[#004f20]/20">
               <div className="relative z-10">
-                <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-white">Welcome back, {data.name?.split(' ')[0]}</h2>
-                <p className="text-emerald-100 max-w-md text-sm">Your financial profile is actively monitored by VittChetak ML Engine. Data synced perfectly.</p>
+                <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-white">{t('welcome.title', { name: data.name?.split(' ')[0] })}</h2>
+                <p className="text-emerald-100 max-w-md text-sm">{t('welcome.subtitle')}</p>
               </div>
               <div className="relative z-10 flex gap-8 mt-8">
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">Total Active Debt</p>
+                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">{t('welcome.totalDebt')}</p>
                   <p className="text-3xl font-black mt-1 tracking-tight text-white">₹4,20,000</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">Risk Exposure</p>
-                  <p className="text-3xl font-black mt-1 tracking-tight text-white">{data.score < 50 ? 'HIGH' : 'LOW'}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">{t('welcome.riskExposure')}</p>
+                  <p className="text-3xl font-black mt-1 tracking-tight text-white">{data.score < 50 ? t('welcome.high') : t('welcome.low')}</p>
                 </div>
               </div>
               {/* Aesthetic Glass Circle Decoration */}
@@ -188,7 +204,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
 
             {/* Financial Health Card */}
             <div className="bg-surface-container-lowest rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-sm border border-outline-variant/10">
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><HeartPulse className="w-3 h-3 text-primary" /> Health Score</p>
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><HeartPulse className="w-3 h-3 text-primary" /> {t('health.healthScore')}</p>
               <div className="relative flex items-center justify-center mb-4">
                 <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
                   <circle className="fill-none stroke-surface-container stroke-[8]" cx="50" cy="50" r="40"></circle>
@@ -199,13 +215,13 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
                 </div>
               </div>
               <div className={`${data.score < 50 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-primary-fixed text-on-primary-fixed'} px-3 py-1 rounded-full mb-1`}>
-                <span className="text-[10px] font-bold uppercase tracking-wider">{data.band ? data.band.replace('_', ' ') : 'Excellent'}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{getBandLabel(data.band)}</span>
               </div>
             </div>
             
             {/* Algorithmic Fraud Shield Card */}
             <div className="bg-surface-container-lowest rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-sm border border-outline-variant/10">
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><ShieldAlert className="w-3 h-3 text-blue-600" /> Fraud Shield</p>
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><ShieldAlert className="w-3 h-3 text-blue-600" /> {t('health.fraudShield')}</p>
               <div className="relative flex items-center justify-center mb-4">
                 <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
                   <circle className="fill-none stroke-surface-container stroke-[8]" cx="50" cy="50" r="40"></circle>
@@ -216,7 +232,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
                 </div>
               </div>
               <div className={`${data.fraudScore > 50 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-blue-100 text-blue-800'} px-3 py-1 rounded-full mb-1`}>
-                <span className="text-[10px] font-bold uppercase tracking-wider">{data.fraudScore > 50 ? 'Risk Alert' : 'High Security'}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{data.fraudScore > 50 ? t('health.riskAlert') : t('health.highSecurity')}</span>
               </div>
             </div>
           </section>
@@ -226,17 +242,17 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
           {(activeTab === 'dashboard' || activeTab === 'emi') && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold tracking-tight text-on-surface">EMI Transaction Logs</h3>
+              <h3 className="text-xl font-bold tracking-tight text-on-surface">{t('emi.title')}</h3>
               <button className="text-primary text-sm font-bold flex items-center gap-1">
-                View Statement <ArrowRight className="w-4 h-4" />
+                {t('emi.viewStatement')} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
             <div className="bg-surface-container-low rounded-lg overflow-hidden">
               <div className="grid grid-cols-4 px-8 py-4 border-b border-outline-variant/10 text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-                <div>Date</div>
-                <div>Description</div>
-                <div>Amount</div>
-                <div className="text-right">Status</div>
+                <div>{t('emi.date')}</div>
+                <div>{t('emi.description')}</div>
+                <div>{t('emi.amount')}</div>
+                <div className="text-right">{t('emi.status')}</div>
               </div>
               <div className="divide-y divide-outline-variant/10">
                 {(data.emiSchedule || []).slice().sort((a,b) => {
@@ -247,10 +263,10 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
                   return new Date(a.dueDate) - new Date(b.dueDate);
                 }).map((txn, idx) => (
                   <div key={idx} className="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
-                    <div className="text-sm text-on-surface">{new Date(txn.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                    <div className="text-sm text-on-surface">{new Date(txn.dueDate).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                     <div className="text-sm font-medium text-on-surface">
                        {txn.description || `EMI ${txn.emiId}`}
-                       {txn.isRestructured && <span className="block mt-1 text-[10px] text-green-700 bg-green-50 w-max px-2 py-0.5 rounded-full font-bold">Admin Restructured ✓</span>}
+                       {txn.isRestructured && <span className="block mt-1 text-[10px] text-green-700 bg-green-50 w-max px-2 py-0.5 rounded-full font-bold">{t('emi.restructured')}</span>}
                     </div>
                     <div className="text-sm font-bold text-on-surface flex flex-col items-start gap-1">
                       {txn.isRestructured && txn.originalAmount && (
@@ -260,18 +276,18 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
                     </div>
                     <div className="text-right flex items-center justify-end gap-3 w-full">
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${txn.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : txn.status === 'OVERDUE' ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-tertiary-fixed text-on-tertiary-container'}`}>
-                        {txn.status}
+                        {getStatusLabel(txn.status)}
                       </span>
                       {txn.status !== 'PAID' && (
                         <button onClick={() => onPayEmi(txn.emiId)} className="bg-primary text-on-primary text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-lg shadow-sm shadow-primary/20 hover:opacity-90 transition-opacity">
-                          Pay Now
+                          {t('emi.payNow')}
                         </button>
                       )}
                     </div>
                   </div>
                 ))}
                 {(!data.emiSchedule || data.emiSchedule.length === 0) && (
-                  <div className="px-8 py-8 text-center text-on-surface-variant text-sm font-medium">No EMIs scheduled.</div>
+                  <div className="px-8 py-8 text-center text-on-surface-variant text-sm font-medium">{t('emi.noEmi')}</div>
                 )}
               </div>
             </div>
@@ -281,44 +297,44 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
           {/* Support Section */}
           {(activeTab === 'dashboard' || activeTab === 'support') && (
           <section className="space-y-6">
-            <h3 className="text-xl font-bold tracking-tight text-on-surface">Support & Resources</h3>
+            <h3 className="text-xl font-bold tracking-tight text-on-surface">{t('support.title')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* FAQ Card 1 */}
               <div className="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant/10 hover:shadow-md transition-all">
                 <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-primary mb-4">
                   <HelpCircle className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-on-surface mb-2">Can I prepay my EMI?</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed">Prepayments are available after the first 6 months of your loan tenure with zero penalties.</p>
+                <h4 className="font-bold text-on-surface mb-2">{t('support.prepayTitle')}</h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">{t('support.prepayDesc')}</p>
               </div>
               {/* FAQ Card 2 */}
               <div className="bg-surface-container-lowest p-6 rounded-lg shadow-sm border border-outline-variant/10 hover:shadow-md transition-all">
                 <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-primary mb-4">
                   <Wallet className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-on-surface mb-2">Change Repayment Bank</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed">Switch your primary repayment account by updating your NACH mandate in the settings.</p>
+                <h4 className="font-bold text-on-surface mb-2">{t('support.changeBankTitle')}</h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">{t('support.changeBankDesc')}</p>
               </div>
               {/* Chat with Agent Card */}
               <div className="bg-surface-container-low p-6 rounded-lg flex flex-col justify-between">
                 <div>
-                  <h4 className="font-bold text-on-surface mb-2">Need direct help?</h4>
-                  <p className="text-xs text-on-surface-variant mb-4">Chat with the Bank Admin regarding negotiations or clear doubts directly within the platform.</p>
+                  <h4 className="font-bold text-on-surface mb-2">{t('support.directHelp')}</h4>
+                  <p className="text-xs text-on-surface-variant mb-4">{t('support.directHelpDesc')}</p>
                 </div>
                 <button onClick={openChatModal} className="w-full py-3 bg-[#004f20] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
                   <MessageSquare className="w-4 h-4" />
-                  Chat with Admin
+                  {t('support.chatWithAdmin')}
                 </button>
               </div>
 
               {/* Shock Simulator Card */}
               <div className="bg-[#ffdad6]/30 border border-[#ba1a1a]/10 p-6 rounded-lg flex flex-col justify-between">
                 <div>
-                  <h4 className="font-bold text-[#ba1a1a] mb-2 flex gap-2 items-center"><AlertTriangle className="w-4 h-4"/> Report Market Shock</h4>
-                  <p className="text-xs text-[#93000a]/80 mb-4">Simulate a severe Medical Emergency or Job Loss to watch algorithmic scoring plummet instantly.</p>
+                  <h4 className="font-bold text-[#ba1a1a] mb-2 flex gap-2 items-center"><AlertTriangle className="w-4 h-4"/> {t('shock.title')}</h4>
+                  <p className="text-xs text-[#93000a]/80 mb-4">{t('shock.desc')}</p>
                 </div>
                 <button onClick={simulateMarketShock} disabled={shockLoading} className="w-full py-3 bg-[#ba1a1a] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50">
-                  {shockLoading ? 'Processing...' : 'Simulate Crisis Event'}
+                  {shockLoading ? t('shock.processing') : t('shock.button')}
                 </button>
               </div>
             </div>
@@ -330,14 +346,17 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
         <div className="h-12"></div>
       </main>
 
+      {/* Language Toggle */}
+      <LanguageToggle />
+
       {/* Chat Modal */}
       {chatOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
            <div className="bg-surface rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
              <div className="bg-[#131e17] p-4 flex justify-between items-center px-6">
                 <div>
-                  <h3 className="text-white font-bold leading-tight">Bank Admin Communication</h3>
-                  <p className="text-gray-400 text-xs">A live representative will review this explicitly.</p>
+                  <h3 className="text-white font-bold leading-tight">{t('chat.title')}</h3>
+                  <p className="text-gray-400 text-xs">{t('chat.subtitle')}</p>
                 </div>
                 <button onClick={() => setChatOpen(false)} className="text-gray-400 hover:text-white transition-colors">
                   <X className="w-5 h-5"/>
@@ -345,7 +364,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
              </div>
              <div className="p-6 bg-surface-container-lowest border-b border-gray-100 flex-1 overflow-y-auto max-h-[300px] flex flex-col gap-2">
                 {chatHistory.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No prior communication. Start a conversation below.</p>
+                  <p className="text-sm text-gray-500 text-center py-4">{t('chat.noPrior')}</p>
                 ) : (
                   chatHistory.map((m, i) => (
                     <div key={i} className={`flex ${m.sender === 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}>
@@ -360,7 +379,7 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi 
                 <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-[#006e2d]">
                   <input 
                      type="text"
-                     placeholder="Type your message..."
+                     placeholder={t('chat.placeholder')}
                      value={chatMessage}
                      onChange={e => setChatMessage(e.target.value)}
                      onKeyDown={e => e.key === 'Enter' && submitChat()}

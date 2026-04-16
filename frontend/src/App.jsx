@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
+import { LanguageProvider } from './i18n/LanguageContext';
 
 // Pages
 import Landing from './pages/Landing';
@@ -27,6 +28,7 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <LanguageProvider>
       <AuthProvider>
         <ToastProvider>
           <Routes>
@@ -53,6 +55,7 @@ export default function App() {
           </Routes>
         </ToastProvider>
       </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

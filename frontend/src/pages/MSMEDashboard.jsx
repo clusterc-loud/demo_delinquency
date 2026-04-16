@@ -9,7 +9,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect }) {
 
   const handleLogout = () => {
     logout();
-    navigate('/customer-login');
+    navigate('/');
   };
 
   if (loading || !data) return <div className="p-8 text-on-surface">Loading...</div>;
