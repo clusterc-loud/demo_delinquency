@@ -35,6 +35,7 @@ const riskScoreSchema = new mongoose.Schema({
       'CUSTOMER_CONCENTRATION',
       'SEASONAL_STRESS',
       'GROWTH_PAINS',
+      'CUSTOMER_ESCALATION',
       'HEALTHY',
     ],
   },

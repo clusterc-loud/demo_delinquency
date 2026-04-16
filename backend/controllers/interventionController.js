@@ -1,6 +1,7 @@
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
 const Intervention = require('../models/Intervention');
+const { recordRiskTransactionOnChain } = require('../services/blockchainService');
 
 const MESSAGE_TEMPLATES = {
   LIQUIDITY_CRUNCH: (name) =>
@@ -48,12 +49,15 @@ const PATTERN_TO_INTERVENTION = {
 const getQueue = async (req, res, next) => {
   try {
     const pending = await RiskScore.find({ status: 'PENDING' })
-      .sort({ slaDeadline: 1 })
+      .sort({ priorityLevel: 1 }) // P1 at top
       .populate('customerId', 'name customerId customerType businessName');
 
-    const queue = pending.map((rs) => {
+    const queue = await Promise.all(pending.map(async (rs) => {
       const now = new Date();
       const diffMs = rs.slaDeadline ? new Date(rs.slaDeadline) - now : 24 * 60 * 60 * 1000;
+      
+      const latestIntervention = await Intervention.findOne({ riskScoreId: rs._id }).sort({ createdAt: -1 });
+      
       return {
         _id: rs._id,
         id: rs.customerId?.customerId,
@@ -65,8 +69,9 @@ const getQueue = async (req, res, next) => {
         slaHours: Math.max(0, diffMs / (1000 * 60 * 60)),
         interventionType: rs.interventionRecommended || PATTERN_TO_INTERVENTION[rs.patternDetected] || 'BUSINESS_ADVISORY',
         healthScore: rs.financialHealthScore,
+        customerMessage: latestIntervention?.messagePreview || null
       };
-    });
+    }));
 
     res.json({ queue });
   } catch (err) {
@@ -140,9 +145,61 @@ const approveIntervention = async (req, res, next) => {
       confidenceScore: 0.85,
     });
 
-    await RiskScore.findByIdAndUpdate(riskScore._id, { status: 'INTERVENED' });
+    // [DYNAMIC FEATURE] Automagically repair the EMI schedule to represent real restructuring
+    if (safeInterventionType === 'EMI_RESTRUCTURE' && customer.mlFeatures && customer.mlFeatures.retail) {
+      customer.mlFeatures.retail.annuity = customer.mlFeatures.retail.annuity * 0.7; // Reduce mathematical EMI burden by 30%
+      customer.mlFeatures.retail.adjCloseHistory = customer.mlFeatures.retail.adjCloseHistory.map(v => v * 1.5); 
+      
+      // Update the actual dynamic EMI queue in the db
+      if (customer.emiSchedule) {
+        customer.emiSchedule.forEach(emi => {
+          if (emi.status === 'PENDING' || emi.status === 'OVERDUE') {
+            emi.originalAmount = emi.amount;
+            emi.amount = emi.amount * 0.7; // Lower by 30%
+            emi.isRestructured = true;
+            emi.description = `Restructured: ${emi.description}`;
+            if (emi.status === 'OVERDUE') emi.status = 'PENDING'; // Clear penalty
+          }
+        });
+      }
 
-    res.json({ success: true, intervention });
+      await customer.save();
+
+      // Recalculate score immediately
+      try {
+        const mlService = require('../services/mlService');
+        const retail = customer.mlFeatures.retail;
+        const resScore = await mlService.predictRetail({
+          customer_id: customerId,
+          AMT_INCOME_TOTAL: retail.income || 500000,
+          AMT_CREDIT: retail.creditAmount || 100000,
+          AMT_ANNUITY: retail.annuity,
+          AMT_GOODS_PRICE: retail.goodsPrice || 100000,
+          REGION_POPULATION_RELATIVE: retail.regionRating || 0.02,
+          DAYS_BIRTH: -10000,
+          DAYS_EMPLOYED: retail.daysEmployed || -1000,
+          EXT_SOURCE_2: retail.externalSource2,
+          EXT_SOURCE_3: retail.externalSource3,
+          adj_close_history: retail.adjCloseHistory
+        });
+        riskScore.financialHealthScore = resScore.score;
+        riskScore.patternDetected = 'HEALTHY';
+        riskScore.priorityLevel = 'P5';
+      } catch (err) {
+        console.error('Demo ML Restore Failed:', err);
+      }
+    }
+
+    await RiskScore.findByIdAndUpdate(riskScore._id, { 
+      status: 'INTERVENED',
+      financialHealthScore: riskScore.financialHealthScore,
+      patternDetected: riskScore.patternDetected,
+      priorityLevel: riskScore.priorityLevel
+    });
+
+    const txId = await recordRiskTransactionOnChain(customer.customerId, `Approved: ${safeInterventionType}`, riskScore.financialHealthScore, 'Green');
+
+    res.json({ success: true, intervention, newScore: riskScore.financialHealthScore, txId });
   } catch (err) {
     next(err);
   }

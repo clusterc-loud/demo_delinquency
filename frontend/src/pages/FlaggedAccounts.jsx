@@ -108,7 +108,8 @@ export default function FlaggedAccounts() {
   }, [search, priority]);
 
   const filtered = accounts.filter((a) => {
-    const matchSearch = search === '' || a.name.toLowerCase().includes(search.toLowerCase()) || a.id.includes(search);
+    const safeName = a.name || 'Unknown';
+    const matchSearch = search === '' || safeName.toLowerCase().includes(search.toLowerCase()) || a.id.includes(search);
     const matchPriority = priority === 'All' || a.priority === priority;
     return matchSearch && matchPriority;
   });

@@ -36,6 +36,8 @@ app.use('/api/interventions', interventionRoutes);
 app.use('/api/msme', msmeRoutes);
 app.use('/api/fraud', fraudRoutes);
 app.use('/api/portal', portalRoutes);
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/simulator', require('./routes/simulator'));
 
 // 404 handler
 app.use((req, res) => {

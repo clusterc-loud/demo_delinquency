@@ -4,8 +4,8 @@ joblib
 numpy
 pandas
 torch
-shap
-pycaret
+shap>=0.40.0
+pycaret>=3.3.0
 pydantic
 scikit-learn
 xgboost

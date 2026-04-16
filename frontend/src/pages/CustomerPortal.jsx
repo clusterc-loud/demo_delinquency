@@ -51,23 +51,29 @@ export default function CustomerPortal() {
     );
   }
 
-  // Choose the dashboard based on customerType
-  if (data.customerType === 'MSME') {
-    return (
-      <MSMEDashboard 
-        data={data} 
-        loading={loading} 
-        onHelpSelect={handleCounsellor} 
-      />
-    );
-  }
+  const handlePayEmi = async (emiId) => {
+    setLoading(true);
+    try {
+      const res = await api.post(`/portal/${data.customerId}/pay-emi/${emiId}`);
+      if (res.data.success) {
+        addToast(`EMI Paid successfully! New Score: ${res.data.newScore}. TX: ${res.data.txId}`, 'success');
+        const { data: newData } = await api.get(`/portal/${id}/health`);
+        setData(p => ({ ...p, ...newData }));
+      }
+    } catch(err) {
+      addToast(err.response?.data?.message || 'Failed to pay EMI', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Fallback to retail dashboard for RETAIL or any other undefined type
   return (
-    <RetailDashboard 
-      data={data} 
-      loading={loading} 
-      onHelpSelect={handleCounsellor} 
-    />
+    <>
+      {data.customerType === 'MSME' ? (
+        <MSMEDashboard data={data} loading={loading} onHelpSelect={handleCounsellor} />
+      ) : (
+        <RetailDashboard data={data} loading={loading} onHelpSelect={handleCounsellor} onPayEmi={handlePayEmi} />
+      )}
+    </>
   );
 }

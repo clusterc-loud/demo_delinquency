@@ -4,7 +4,7 @@ const Customer = require('../models/Customer');
 // GET /api/flagged
 const getFlaggedAccounts = async (req, res, next) => {
   try {
-    const { priority, customerType, pattern, fraudRisk, search, page = 1, limit = 20 } = req.query;
+    const { priority, customerType, pattern, fraudRisk, search, page = 1, limit = 500 } = req.query;
 
     // Build RiskScore filter
     const rsFilter = { status: 'PENDING' };
@@ -60,8 +60,8 @@ const getFlaggedAccounts = async (req, res, next) => {
       id: rs.customerId?.customerId || 'N/A',
       customerId: rs.customerId?.customerId || 'N/A',
       name: rs.customerId?.customerType === 'MSME'
-        ? rs.customerId?.businessName || rs.customerId?.name
-        : rs.customerId?.name,
+        ? (rs.customerId?.businessName || rs.customerId?.name || 'Unknown')
+        : (rs.customerId?.name || 'Unknown'),
       segment: rs.customerId?.customerType,
       customerType: rs.customerId?.customerType,
       wealthSegment: rs.customerId?.wealthSegment,
@@ -79,8 +79,8 @@ const getFlaggedAccounts = async (req, res, next) => {
         importance: s.impactPercent,
         direction: 'up',
       })),
-      shapSignals: rs.shapSignals?.slice(0, 3),
-      recommendation: INTERVENTION_LABEL[rs.interventionRecommended] || 'Monitor account closely. Schedule review.',
+      shapSignals: rs.shapSignals?.slice(0, 3) || [],
+      recommendation: INTERVENTION_LABEL[rs.interventionRecommended] || INTERVENTION_LABEL[rs.patternDetected] || 'Monitor account closely. Prioritize interaction.',
       interventionRecommended: rs.interventionRecommended,
     }));
 

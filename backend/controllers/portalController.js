@@ -66,12 +66,13 @@ const getHealthSummary = async (req, res, next) => {
       summaryText: `Your financial health is ${band.toLowerCase().replace('_', ' ')}. ${strengths.length > 0 ? 'You have strong areas in ' + strengths.slice(0, 2).join(' and ') + '.' : ''}`,
       strengths: strengths.length > 0 ? strengths : ['Account in good standing'],
       attentionAreas: attentionAreas.length > 0 ? attentionAreas : ['No critical concerns at this time'],
-      scoreTrend,
       name: customer.name,
       customerId: customer.customerId,
       customerType: customer.customerType,
       businessName: customer.businessName,
       gstNumber: customer.gstNumber,
+      emiSchedule: customer.emiSchedule,
+      fraudScore: latest.fraudScore || 0,
     });
   } catch (err) {
     next(err);
@@ -209,6 +210,7 @@ const updateAlertPreferences = async (req, res, next) => {
 const requestCounsellor = async (req, res, next) => {
   try {
     const { customerId } = req.params;
+    const { message } = req.body;
 
     const customer = await Customer.findOne({ customerId });
     if (!customer) {
@@ -220,25 +222,120 @@ const requestCounsellor = async (req, res, next) => {
       return res.status(404).json({ message: 'No risk score found' });
     }
 
-    await Intervention.create({
+    const intervention = await Intervention.create({
       customerId: customer._id,
       riskScoreId: riskScore._id,
       interventionType: 'COUNSELLOR_REFERRAL',
-      channel: 'RM_CALL',
-      messagePreview: 'Customer requested counsellor via self-service portal',
+      channel: 'APP',
+      messagePreview: message || 'Customer requested counsellor via self-service portal',
       approvedBy: 'SELF_SERVICE',
       confidenceScore: 1.0,
     });
 
-    await RiskScore.findByIdAndUpdate(riskScore._id, { priorityLevel: 'P1' });
+    await RiskScore.findByIdAndUpdate(riskScore._id, { 
+      priorityLevel: 'P1', 
+      status: 'PENDING',
+      patternDetected: 'CUSTOMER_ESCALATION'
+    });
 
     res.json({
       success: true,
-      message: 'Counsellor will contact you within 1 hour',
+      message: 'Bank Admin has been notified instantly.',
+      interventionId: intervention._id
     });
   } catch (err) {
     next(err);
   }
 };
 
-module.exports = { getHealthSummary, simulateScenario, simulateTransaction, updateAlertPreferences, requestCounsellor };
+// POST /api/portal/:customerId/pay-emi/:emiId
+const payEmi = async (req, res, next) => {
+  try {
+    const { customerId, emiId } = req.params;
+    
+    const customer = await Customer.findOne({ customerId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    const emi = customer.emiSchedule.find(e => e.emiId === emiId);
+    if (!emi) return res.status(404).json({ message: 'EMI not found' });
+    if (emi.status === 'PAID') return res.status(400).json({ message: 'EMI already paid' });
+
+    emi.status = 'PAID';
+
+    if (customer.mlFeatures && customer.mlFeatures.retail) {
+      customer.mlFeatures.retail.creditAmount = Math.max(0, customer.mlFeatures.retail.creditAmount - emi.amount);
+      customer.mlFeatures.retail.adjCloseHistory = customer.mlFeatures.retail.adjCloseHistory.map(v => v * 1.05);
+    }
+    
+    await customer.save();
+
+    let newScore = 80;
+    try {
+      const mlRes = await mlClient.predictRetail({
+         customer_id: customerId,
+         ...customer.mlFeatures.retail,
+         AMT_INCOME_TOTAL: customer.mlFeatures.retail.income,
+         AMT_CREDIT: customer.mlFeatures.retail.creditAmount,
+         AMT_ANNUITY: customer.mlFeatures.retail.annuity,
+         DAYS_BIRTH: -10000,
+         DAYS_EMPLOYED: -300,
+         REGION_POPULATION_RELATIVE: 0.02
+      });
+      newScore = mlRes.score;
+    } catch(err) {
+      console.warn("ML Fallback in payEMI");
+    }
+
+    const rs = await RiskScore.findOne({ customerId: customer._id });
+    if (rs) {
+      rs.financialHealthScore = newScore;
+      if (newScore > 50) rs.patternDetected = 'HEALTHY';
+      await rs.save();
+    }
+
+    const txId = await recordRiskTransactionOnChain(customerId, `Paid EMI ${emiId}`, newScore, newScore > 50 ? 'Green' : 'Red');
+
+    res.json({ success: true, emiId, newScore, txId, emiSchedule: customer.emiSchedule });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/portal/:customerId/market-shock
+const simulateMarketShock = async (req, res, next) => {
+  try {
+    const { customerId } = req.params;
+    const customer = await Customer.findOne({ customerId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    if (customer.mlFeatures && customer.mlFeatures.retail) {
+      customer.mlFeatures.retail.adjCloseHistory = customer.mlFeatures.retail.adjCloseHistory.map(v => v * 0.4);
+    }
+    await customer.save();
+
+    const rs = await RiskScore.findOne({ customerId: customer._id }).sort({ asOfDate: -1 });
+    if (rs) {
+      rs.financialHealthScore = 22;
+      rs.patternDetected = 'LIQUIDITY_CRUNCH';
+      rs.priorityLevel = 'P1';
+      rs.status = 'PENDING';
+      await rs.save();
+      
+      await Intervention.create({
+        customerId: customer._id,
+        riskScoreId: rs._id,
+        interventionType: 'EMI_RESTRUCTURE',
+        channel: 'ALGO_MONITOR',
+        messagePreview: 'CRITICAL SHOCK DETECTED: 60% Liquidity Drop',
+        approvedBy: 'SYSTEM',
+        confidenceScore: 0.99,
+      });
+    }
+
+    res.json({ success: true, message: 'Market shock simulated. Account flagged critical.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getHealthSummary, simulateScenario, simulateTransaction, updateAlertPreferences, requestCounsellor, payEmi, simulateMarketShock };

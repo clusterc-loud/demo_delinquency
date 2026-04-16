@@ -150,6 +150,19 @@ const customerRegister = async (req, res, next) => {
       businessName: customerType === 'MSME' ? businessName || `${name} Enterprises` : undefined,
       gstNumber: customerType === 'MSME' ? gstNumber || '27XXXXX0000X1Z5' : undefined,
       isActive: true,
+      emiSchedule: [
+        { emiId: `EMI-1-${Date.now()}`, amount: 15400, dueDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), status: 'PAID', description: 'Personal Loan #01' },
+        { emiId: `EMI-2-${Date.now()}`, amount: 15400, dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), status: 'PENDING', description: 'Personal Loan #02' },
+        { emiId: `EMI-3-${Date.now()}`, amount: 8200, dueDate: new Date(Date.now() -   2 * 24 * 60 * 60 * 1000), status: 'OVERDUE', description: 'Credit Card Minimum' },
+      ],
+      mlFeatures: {
+        retail: {
+          adjCloseHistory: [100, 95, 90, 85, 80],
+          income: 50000,
+          creditAmount: 200000,
+          annuity: 23600
+        }
+      }
     });
     
     // Seed an initial RiskScore so the portal displays immediately using full ML precision

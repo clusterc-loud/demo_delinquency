@@ -104,6 +104,17 @@ const customerSchema = new mongoose.Schema({
       externalSource3: Number,
     }
   },
+  emiSchedule: [
+    {
+      emiId: { type: String, required: true },
+      amount: { type: Number, required: true },
+      originalAmount: { type: Number },
+      isRestructured: { type: Boolean, default: false },
+      dueDate: { type: Date, required: true },
+      status: { type: String, enum: ['PAID', 'PENDING', 'OVERDUE'], default: 'PENDING' },
+      description: { type: String }
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now,

@@ -1,61 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Clock, Send, CheckCircle, UserCheck, MessageSquare, Zap } from 'lucide-react';
+import { Clock, Send, CheckCircle, UserCheck, MessageSquare, Zap, Search } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
-const MOCK_QUEUE = [
-  {
-    id: 'VC-18842',
-    name: 'Global Logistics Pvt Ltd',
-    segment: 'MSME',
-    priority: 'P1',
-    slaHours: 0.5,
-    healthScore: 38,
-    interventionType: 'Restructuring Advisory',
-  },
-  {
-    id: 'VC-82910',
-    name: 'Rajesh Malhotra',
-    segment: 'Retail',
-    priority: 'P2',
-    slaHours: 3.5,
-    healthScore: 44,
-    interventionType: 'Payment Reminder',
-  },
-  {
-    id: 'VC-33180',
-    name: 'Celestial Ventures Ltd',
-    segment: 'MSME',
-    priority: 'P2',
-    slaHours: 7,
-    healthScore: 55,
-    interventionType: 'Proactive Outreach',
-  },
-  {
-    id: 'VC-45512',
-    name: 'Priya Mehta',
-    segment: 'Retail',
-    priority: 'P3',
-    slaHours: 16,
-    healthScore: 65,
-    interventionType: 'Educational Notice',
-  },
-];
-
-const MOCK_MESSAGE = `Dear Rajesh Malhotra,
-
-This is a proactive communication from VittChetak Financial Intelligence in support of your account with your institution.
-
-Our AI analytics have detected early warning signs in your account's financial health. As a valued customer, we want to ensure you remain on track with your financial goals.
-
-Key Signal: Salary reduction and elevated EMI burden detected.
-
-We are committed to helping you navigate any financial challenges. Please reach out at your earliest convenience to discuss tailored solutions.`;
-
-function SLACountdown({ hours }) {
+export function SLACountdown({ hours }) {
   const totalMs = hours * 3600 * 1000;
   const [remaining, setRemaining] = useState(totalMs);
 
@@ -83,47 +34,18 @@ function SLACountdown({ hours }) {
   );
 }
 
-function TypewriterText({ text, delay = 0 }) {
-  const [displayedText, setDisplayedText] = useState('');
-  const [isComplete, setIsComplete] = useState(false);
-
-  useEffect(() => {
-    setDisplayedText('');
-    setIsComplete(false);
-    let charIndex = 0;
-
-    const timeout = setTimeout(() => {
-      const interval = setInterval(() => {
-        if (charIndex <= text.length) {
-          setDisplayedText(text.slice(0, charIndex));
-          charIndex++;
-        } else {
-          setIsComplete(true);
-          clearInterval(interval);
-        }
-      }, 18);
-      return () => clearInterval(interval);
-    }, delay);
-
-    return () => clearTimeout(timeout);
-  }, [text, delay]);
-
-  return (
-    <pre className="whitespace-pre-wrap font-body text-sm text-[#131e17] leading-relaxed">
-      {displayedText}
-      {!isComplete && <span className="inline-block w-0.5 h-4 bg-[#006e2d] animate-pulse align-middle ml-0.5" />}
-    </pre>
-  );
-}
-
 export default function InterventionQueue() {
-  const [queue, setQueue] = useState(MOCK_QUEUE);
-  const [selected, setSelected] = useState(MOCK_QUEUE[0]);
+  const [queue, setQueue] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [message, setMessage] = useState('');
   const [activeType, setActiveType] = useState('SMS');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [sendingTo, setSendingTo] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -140,28 +62,66 @@ export default function InterventionQueue() {
     setMessage('');
     try {
       const { data } = await api.get(`/interventions/${customer.id}/generate-message`);
-      setMessage(data?.message || MOCK_MESSAGE);
+      setMessage(data?.message || 'Default system message generated.');
     } catch {
-      setMessage(MOCK_MESSAGE);
+      setMessage('Fallback generic message generated for Restructure processing.');
     } finally {
       setGenerating(false);
     }
   }, []);
 
   useEffect(() => {
-    if (selected) generateMessage(selected);
+    if (selected) {
+      generateMessage(selected);
+      // Fetch dynamic chat history
+      api.get(`/chat/${selected.id}`).then(res => {
+        setChatHistory(res.data.messages || []);
+      }).catch(() => setChatHistory([]));
+    }
   }, [selected]);
 
+  const handleSendChat = async () => {
+    if (!replyText.trim() || !selected) return;
+    setReplying(true);
+    try {
+      const res = await api.post(`/chat/${selected.id}`, { sender: 'ADMIN', text: replyText });
+      setChatHistory(res.data.messages);
+      setReplyText('');
+      addToast('Reply sent.', 'success');
+    } catch {
+      addToast('Failed to send reply.', 'error');
+    } finally {
+      setReplying(false);
+    }
+  };
+
+  const fetchQueue = useCallback(async () => {
+    try {
+      const { data } = await api.get('/interventions/queue');
+      if (data?.queue) {
+        setQueue(prev => {
+          if (JSON.stringify(prev) !== JSON.stringify(data.queue)) {
+             // Play notification sound visually or via toast if a P1 triggers
+             const hasNewP1 = data.queue.some(q => q.priority === 'P1' && !prev.find(p => p.id === q.id));
+             if (hasNewP1) addToast('New Priority Intervention Received!', 'error');
+             return data.queue;
+          }
+          return prev;
+        });
+      }
+    } catch (err) {}
+  }, [addToast]);
+
   useEffect(() => {
-    api.get('/interventions/queue').then(({ data }) => {
-      if (data?.queue) setQueue(data.queue);
-    }).catch(() => {});
-  }, []);
+    fetchQueue();
+    const inv = setInterval(fetchQueue, 5000);
+    return () => clearInterval(inv);
+  }, [fetchQueue]);
 
   const handleApprove = async () => {
     setSendingTo(selected.id);
     try {
-      await api.post(`/interventions/${selected.id}/approve`, { type: activeType, message });
+      await api.post(`/interventions/${selected.id}/approve`, { channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), messagePreview: message, interventionType: selected.interventionType });
       addToast(`Intervention sent to ${selected.name}`, 'success');
       setQueue((prev) => prev.filter((q) => q.id !== selected.id));
       setSelected(queue.find((q) => q.id !== selected.id) || null);
@@ -190,9 +150,19 @@ export default function InterventionQueue() {
           <div className="p-6 border-b border-[#e4f1e5]">
             <h1 className="text-2xl font-extrabold text-[#131e17]">Intervention Queue</h1>
             <p className="text-sm text-[#3d4a3d] mt-1">{queue.length} accounts awaiting action</p>
+            <div className="mt-4 relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search by name or ID..."
+                className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-[#1db954]"
+              />
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {queue.map((item) => (
+            {queue.filter(q => q.name.toLowerCase().includes(searchTerm.toLowerCase()) || q.id.includes(searchTerm)).map((item) => (
               <div
                 key={item.id}
                 onClick={() => setSelected(item)}
@@ -252,11 +222,41 @@ export default function InterventionQueue() {
 
             {/* Message Preview */}
             <div className="flex-1 overflow-y-auto p-8 bg-[#eaf7eb]">
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-4 h-4 text-[#006e2d]" />
-                <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">AI-Generated {activeType} Preview</span>
+              {/* Dynamic Chat History */}
+              <div className="mb-8 space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageSquare className="w-4 h-4 text-[#006e2d]" />
+                  <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">Live Chat History</span>
+                </div>
+                {chatHistory.length > 0 ? chatHistory.map((m, i) => (
+                  <div key={i} className={`flex ${m.sender === 'ADMIN' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] p-4 rounded-xl shadow-sm ${m.sender === 'ADMIN' ? 'bg-[#1db954] text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'}`}>
+                      <div className="text-[10px] font-bold opacity-70 mb-1">{m.sender}</div>
+                      <div className="text-sm">{m.text}</div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-6 text-gray-400 text-sm">No active chat history. Send a message to initiate communication.</div>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <input 
+                    type="text" 
+                    value={replyText} 
+                    onChange={e => setReplyText(e.target.value)} 
+                    placeholder="Type a direct reply..."
+                    className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm"
+                  />
+                  <button onClick={handleSendChat} disabled={replying} className="bg-[#1db954] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-[#159a43]">
+                     <Send className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm min-h-[280px]">
+              
+              <div className="flex items-center gap-2 mb-4 mt-8">
+                <Zap className="w-4 h-4 text-[#006e2d]" />
+                <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">AI-Generated {activeType} Reply Preview</span>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow-sm min-h-[200px]">
                 {generating ? (
                   <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
@@ -264,7 +264,9 @@ export default function InterventionQueue() {
                     ))}
                   </div>
                 ) : (
-                  <TypewriterText text={message} />
+                  <pre className="whitespace-pre-wrap font-body text-sm text-[#131e17] leading-relaxed">
+                    {message}
+                  </pre>
                 )}
               </div>
             </div>
@@ -279,6 +281,24 @@ export default function InterventionQueue() {
                 Route to Counsellor
               </button>
               <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    setSendingTo(selected.id);
+                    try {
+                      const res = await api.post(`/interventions/${selected.id}/approve`, { channel: activeType === 'In-App' ? 'APP' : activeType.toUpperCase(), messagePreview: message, interventionType: 'EMI_RESTRUCTURE' });
+                      addToast(`Restructured EMI. Risk Score recovered to ${res.data.newScore}`, 'success');
+                      setQueue((prev) => prev.filter((q) => q.id !== selected.id));
+                      setSelected(null);
+                    } catch {
+                      addToast('Failed to restructure.', 'error');
+                    } finally {
+                      setSendingTo(null);
+                    }
+                  }}
+                  className="text-sm font-bold px-4 py-2 rounded-xl bg-[#eaf7eb] text-[#006e2d] hover:bg-[#d4f0d7] transition-colors"
+                >
+                  🛠 Restructure EMI
+                </button>
                 <button
                   onClick={generateMessage.bind(null, selected)}
                   className="text-sm font-bold px-4 py-2 rounded-xl border border-[#bccbb9] hover:bg-[#eaf7eb] transition-colors"

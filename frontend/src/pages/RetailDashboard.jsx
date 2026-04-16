@@ -1,15 +1,72 @@
-import React from 'react';
-import { Search, Bell, Settings, ArrowRight, HelpCircle, Wallet, MessageSquare, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, Settings, ArrowRight, HelpCircle, Wallet, MessageSquare, LogOut, ShieldAlert, HeartPulse, X, Send, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
+import api from '../api/axios';
 
-export default function RetailDashboard({ data, loading, onHelpSelect }) {
+export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
+  
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatSending, setChatSending] = useState(false);
+  const [shockLoading, setShockLoading] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/customer-login');
+  };
+
+  const handleInactiveFeature = (feature) => {
+    addToast(`${feature} is available natively on the VittChetak iOS & Android apps.`, 'info');
+  };
+
+  const openChatModal = async () => {
+    setChatOpen(true);
+    try {
+      const res = await api.get(`/chat/${data.customerId}`);
+      setChatHistory(res.data.messages || []);
+    } catch {
+      setChatHistory([]);
+    }
+  };
+
+  const submitChat = async () => {
+    if (!chatMessage.trim()) return;
+    setChatSending(true);
+    try {
+       const res = await api.post(`/chat/${data.customerId}`, { sender: 'CUSTOMER', text: chatMessage });
+       setChatHistory(res.data.messages || []);
+       
+       // Alert admin via priority intervention if it's the first message
+       if (!chatHistory.length) {
+         await api.post(`/portal/${data.customerId}/request-counsellor`, { message: chatMessage });
+       }
+       setChatMessage('');
+    } catch {
+       addToast('Failed to send message', 'error');
+    } finally {
+       setChatSending(false);
+    }
+  };
+
+  const simulateMarketShock = async () => {
+    if (!window.confirm("WARNING: This simulates a sudden devastating financial shock (e.g. Job Loss). Your ML Risk score will violently drop. Proceed?")) return;
+    setShockLoading(true);
+    try {
+      await api.post(`/portal/${data.customerId}/market-shock`);
+      addToast('System Shock Registered. Recalculating AI metrics...', 'warning');
+      setTimeout(() => window.location.reload(), 1500); // hard refresh to show damage
+    } catch {
+      addToast('Shock simulation failed', 'error');
+    } finally {
+      setShockLoading(false);
+    }
   };
 
   if (loading || !data) return <div className="p-8 text-on-surface">Loading...</div>;
@@ -24,25 +81,25 @@ export default function RetailDashboard({ data, loading, onHelpSelect }) {
         </div>
         <nav className="flex-1 px-4 space-y-2">
           {/* Active Tab: Dashboard */}
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-green-700 dark:text-green-300 font-bold border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20" href="#">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'dashboard' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">dashboard</span>
             <span>Dashboard</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+          </button>
+          <button onClick={() => setActiveTab('emi')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'emi' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">receipt_long</span>
             <span>EMI Transactions</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+          </button>
+          <button onClick={() => setActiveTab('health')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'health' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">health_and_safety</span>
             <span>Financial Health</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" href="#">
+          </button>
+          <button onClick={() => setActiveTab('support')} className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-bold ${activeTab === 'support' ? 'text-green-700 dark:text-green-300 border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 hover:text-green-600 hover:bg-emerald-100'}`}>
             <span className="material-symbols-outlined">help_center</span>
-            <span>Support</span>
-          </a>
+            <span>Support Hub</span>
+          </button>
         </nav>
         <div className="mt-auto px-4 pb-4">
-          <button className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-primary text-on-primary rounded-lg font-bold text-sm shadow-xl shadow-primary/10 hover:opacity-90 transition-opacity">
+          <button onClick={() => handleInactiveFeature('Pro AI Insights')} className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-primary text-on-primary rounded-lg font-bold text-sm shadow-xl shadow-primary/10 hover:opacity-90 transition-opacity">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
             AI Insights
           </button>
@@ -75,10 +132,10 @@ export default function RetailDashboard({ data, loading, onHelpSelect }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
+            <button onClick={() => handleInactiveFeature('Notifications')} className="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
               <Bell className="w-5 h-5" />
             </button>
-            <button className="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
+            <button onClick={() => handleInactiveFeature('Account Settings')} className="hover:bg-white/50 dark:hover:bg-black/20 rounded-full p-2 text-on-surface-variant">
               <Settings className="w-5 h-5" />
             </button>
             <div className="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
@@ -87,51 +144,86 @@ export default function RetailDashboard({ data, loading, onHelpSelect }) {
         </header>
 
         <div className="p-8 space-y-8">
-          {/* Hero Section (Bento Grid Style) */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Welcome Card */}
-            <div className="lg:col-span-2 bg-gradient-to-br from-primary to-primary-container rounded-lg p-8 text-on-primary flex flex-col justify-between min-h-[240px] relative overflow-hidden shadow-2xl shadow-primary/20">
-              <div className="relative z-10">
-                <h2 className="text-3xl font-extrabold tracking-tight mb-2">Welcome back, {data.name?.split(' ')[0]}</h2>
-                <p className="text-on-primary/80 max-w-md">Your financial growth is on a steady trajectory. You've successfully cleared 4 EMIs this quarter.</p>
+          {/* Proactive AI Warning Banner */}
+          {(data.score < 50 || (data.emiSchedule && data.emiSchedule.some(e => e.status === 'OVERDUE'))) && (
+            <div className="bg-[#ffdad6] border-[1.5px] border-[#ba1a1a]/20 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#ba1a1a]/5 rounded-full blur-2xl font-bold animate-pulse" />
+              <div className="relative z-10 w-full">
+                <h3 className="font-bold text-[#ba1a1a] flex items-center gap-2 text-lg">
+                  🚨 AI Proactive Delinquency Prediction
+                </h3>
+                <p className="text-sm text-[#93000a] mt-1 pr-4 font-medium">
+                  Based on your current income-to-debt ratio, our ML Engine projects a high probability of missing your upcoming EMIs within 30 days. Let us help you restructuring your loans to avoid a catastrophic default.
+                </p>
               </div>
-              <div className="relative z-10 flex gap-12 mt-8">
+              <button onClick={onHelpSelect} className="shrink-0 bg-[#ba1a1a] text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md hover:bg-[#93000a] transition-colors whitespace-nowrap relative z-10">
+                Contact Bank Admin
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-8 pb-12">
+          {/* Hero Section (Bento Grid Style) */}
+          {(activeTab === 'dashboard' || activeTab === 'health') && (
+          <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Welcome Card */}
+            <div className="lg:col-span-2 bg-gradient-to-br from-[#004f20] to-[#006e2d] rounded-lg p-8 text-on-primary flex flex-col justify-between min-h-[240px] relative overflow-hidden shadow-xl shadow-[#004f20]/20">
+              <div className="relative z-10">
+                <h2 className="text-3xl font-extrabold tracking-tight mb-2 text-white">Welcome back, {data.name?.split(' ')[0]}</h2>
+                <p className="text-emerald-100 max-w-md text-sm">Your financial profile is actively monitored by VittChetak ML Engine. Data synced perfectly.</p>
+              </div>
+              <div className="relative z-10 flex gap-8 mt-8">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-on-primary/60 font-bold">Total Active Loans</p>
-                  <p className="text-4xl font-bold mt-1">₹4,20,000</p>
+                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">Total Active Debt</p>
+                  <p className="text-3xl font-black mt-1 tracking-tight text-white">₹4,20,000</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-on-primary/60 font-bold">Next Due</p>
-                  <p className="text-4xl font-bold mt-1">Oct 12</p>
+                  <p className="text-[10px] uppercase tracking-widest text-[#72fe8f] font-bold">Risk Exposure</p>
+                  <p className="text-3xl font-black mt-1 tracking-tight text-white">{data.score < 50 ? 'HIGH' : 'LOW'}</p>
                 </div>
               </div>
               {/* Aesthetic Glass Circle Decoration */}
-              <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+              <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-[#72fe8f]/10 rounded-full blur-3xl"></div>
             </div>
 
             {/* Financial Health Card */}
-            <div className="bg-surface-container-lowest rounded-lg p-8 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">Financial Health Score</p>
+            <div className="bg-surface-container-lowest rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-sm border border-outline-variant/10">
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><HeartPulse className="w-3 h-3 text-primary" /> Health Score</p>
               <div className="relative flex items-center justify-center mb-4">
-                <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
                   <circle className="fill-none stroke-surface-container stroke-[8]" cx="50" cy="50" r="40"></circle>
-                  <circle className="fill-none stroke-primary-container stroke-[8]" strokeLinecap="round" strokeDasharray="251.2" strokeDashoffset={`calc(251.2 - (251.2 * ${data.score}) / 100)`} cx="50" cy="50" r="40"></circle>
+                  <circle className={`fill-none stroke-[8] ${data.score < 50 ? 'stroke-[#ba1a1a]' : 'stroke-primary-container'}`} strokeLinecap="round" strokeDasharray="251.2" strokeDashoffset={`calc(251.2 - (251.2 * ${data.score}) / 100)`} cx="50" cy="50" r="40"></circle>
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-primary">{Math.round(data.score * 8.5) || 82}</span>
+                  <span className={`text-3xl font-black ${data.score < 50 ? 'text-[#ba1a1a]' : 'text-primary'}`}>{data.score || 82}</span>
                 </div>
               </div>
-              <div className="bg-primary-fixed px-3 py-1 rounded-full mb-3">
-                <span className="text-[10px] font-bold text-on-primary-fixed uppercase tracking-wider">{data.band ? data.band.replace('_', ' ') : 'Excellent'}</span>
+              <div className={`${data.score < 50 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-primary-fixed text-on-primary-fixed'} px-3 py-1 rounded-full mb-1`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{data.band ? data.band.replace('_', ' ') : 'Excellent'}</span>
               </div>
-              <p className="text-sm text-on-surface-variant leading-relaxed">
-                <span className="font-bold text-primary">AI Insight: </span> 
-                {data.summaryText || 'Your debt-to-income ratio improved by 4% this month. Keep it up!'}
-              </p>
+            </div>
+            
+            {/* Algorithmic Fraud Shield Card */}
+            <div className="bg-surface-container-lowest rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-sm border border-outline-variant/10">
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-1"><ShieldAlert className="w-3 h-3 text-blue-600" /> Fraud Shield</p>
+              <div className="relative flex items-center justify-center mb-4">
+                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+                  <circle className="fill-none stroke-surface-container stroke-[8]" cx="50" cy="50" r="40"></circle>
+                  <circle className={`fill-none stroke-[8] ${data.fraudScore > 50 ? 'stroke-[#ba1a1a]' : 'stroke-blue-500'}`} strokeLinecap="round" strokeDasharray="251.2" strokeDashoffset={`calc(251.2 - (251.2 * ${data.fraudScore || 0}) / 100)`} cx="50" cy="50" r="40"></circle>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-3xl font-black ${data.fraudScore > 50 ? 'text-[#ba1a1a]' : 'text-blue-600'}`}>{data.fraudScore || 0}</span>
+                </div>
+              </div>
+              <div className={`${data.fraudScore > 50 ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-blue-100 text-blue-800'} px-3 py-1 rounded-full mb-1`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{data.fraudScore > 50 ? 'Risk Alert' : 'High Security'}</span>
+              </div>
             </div>
           </section>
+          )}
 
           {/* EMI Transaction Logs */}
+          {(activeTab === 'dashboard' || activeTab === 'emi') && (
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold tracking-tight text-on-surface">EMI Transaction Logs</h3>
@@ -147,28 +239,47 @@ export default function RetailDashboard({ data, loading, onHelpSelect }) {
                 <div className="text-right">Status</div>
               </div>
               <div className="divide-y divide-outline-variant/10">
-                {[
-                  { date: 'Sep 12, 2023', desc: 'Home Loan EMI #24', amount: '₹24,500', status: 'Paid' },
-                  { date: 'Aug 12, 2023', desc: 'Home Loan EMI #23', amount: '₹24,500', status: 'Paid' },
-                  { date: 'Jul 12, 2023', desc: 'Personal Loan EMI #06', amount: '₹8,200', status: 'Paid' },
-                  { date: 'Oct 12, 2023', desc: 'Home Loan EMI #25', amount: '₹24,500', status: 'Pending' }
-                ].map((txn, idx) => (
+                {(data.emiSchedule || []).slice().sort((a,b) => {
+                  if (a.status === 'OVERDUE' && b.status !== 'OVERDUE') return -1;
+                  if (b.status === 'OVERDUE' && a.status !== 'OVERDUE') return 1;
+                  if (a.status === 'PENDING' && b.status === 'PAID') return -1;
+                  if (b.status === 'PENDING' && a.status === 'PAID') return 1;
+                  return new Date(a.dueDate) - new Date(b.dueDate);
+                }).map((txn, idx) => (
                   <div key={idx} className="grid grid-cols-4 px-8 py-5 items-center hover:bg-surface-container-high transition-colors">
-                    <div className="text-sm text-on-surface">{txn.date}</div>
-                    <div className="text-sm font-medium text-on-surface">{txn.desc}</div>
-                    <div className="text-sm font-bold text-on-surface">{txn.amount}</div>
-                    <div className="text-right">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${txn.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-tertiary-fixed text-on-tertiary-container'}`}>
+                    <div className="text-sm text-on-surface">{new Date(txn.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                    <div className="text-sm font-medium text-on-surface">
+                       {txn.description || `EMI ${txn.emiId}`}
+                       {txn.isRestructured && <span className="block mt-1 text-[10px] text-green-700 bg-green-50 w-max px-2 py-0.5 rounded-full font-bold">Admin Restructured ✓</span>}
+                    </div>
+                    <div className="text-sm font-bold text-on-surface flex flex-col items-start gap-1">
+                      {txn.isRestructured && txn.originalAmount && (
+                        <span className="text-rose-400 line-through text-[10px]">₹{txn.originalAmount.toLocaleString('en-IN')}</span>
+                      )}
+                      <span className={txn.isRestructured ? 'text-green-800 font-black' : ''}>₹{txn.amount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="text-right flex items-center justify-end gap-3 w-full">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${txn.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : txn.status === 'OVERDUE' ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-tertiary-fixed text-on-tertiary-container'}`}>
                         {txn.status}
                       </span>
+                      {txn.status !== 'PAID' && (
+                        <button onClick={() => onPayEmi(txn.emiId)} className="bg-primary text-on-primary text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-lg shadow-sm shadow-primary/20 hover:opacity-90 transition-opacity">
+                          Pay Now
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
+                {(!data.emiSchedule || data.emiSchedule.length === 0) && (
+                  <div className="px-8 py-8 text-center text-on-surface-variant text-sm font-medium">No EMIs scheduled.</div>
+                )}
               </div>
             </div>
           </section>
+          )}
 
           {/* Support Section */}
+          {(activeTab === 'dashboard' || activeTab === 'support') && (
           <section className="space-y-6">
             <h3 className="text-xl font-bold tracking-tight text-on-surface">Support & Resources</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -192,19 +303,77 @@ export default function RetailDashboard({ data, loading, onHelpSelect }) {
               <div className="bg-surface-container-low p-6 rounded-lg flex flex-col justify-between">
                 <div>
                   <h4 className="font-bold text-on-surface mb-2">Need direct help?</h4>
-                  <p className="text-xs text-on-surface-variant mb-4">Our financial advisors are available 24/7 to assist with complex queries.</p>
+                  <p className="text-xs text-on-surface-variant mb-4">Chat with the Bank Admin regarding negotiations or clear doubts directly within the platform.</p>
                 </div>
-                <button onClick={onHelpSelect} className="w-full py-3 bg-secondary text-on-secondary rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
+                <button onClick={openChatModal} className="w-full py-3 bg-[#004f20] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
                   <MessageSquare className="w-4 h-4" />
-                  Chat with Agent
+                  Chat with Admin
+                </button>
+              </div>
+
+              {/* Shock Simulator Card */}
+              <div className="bg-[#ffdad6]/30 border border-[#ba1a1a]/10 p-6 rounded-lg flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-[#ba1a1a] mb-2 flex gap-2 items-center"><AlertTriangle className="w-4 h-4"/> Report Market Shock</h4>
+                  <p className="text-xs text-[#93000a]/80 mb-4">Simulate a severe Medical Emergency or Job Loss to watch algorithmic scoring plummet instantly.</p>
+                </div>
+                <button onClick={simulateMarketShock} disabled={shockLoading} className="w-full py-3 bg-[#ba1a1a] text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50">
+                  {shockLoading ? 'Processing...' : 'Simulate Crisis Event'}
                 </button>
               </div>
             </div>
           </section>
+          )}
+          </div>
         </div>
         {/* Footer spacing */}
         <div className="h-12"></div>
       </main>
+
+      {/* Chat Modal */}
+      {chatOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+           <div className="bg-surface rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+             <div className="bg-[#131e17] p-4 flex justify-between items-center px-6">
+                <div>
+                  <h3 className="text-white font-bold leading-tight">Bank Admin Communication</h3>
+                  <p className="text-gray-400 text-xs">A live representative will review this explicitly.</p>
+                </div>
+                <button onClick={() => setChatOpen(false)} className="text-gray-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5"/>
+                </button>
+             </div>
+             <div className="p-6 bg-surface-container-lowest border-b border-gray-100 flex-1 overflow-y-auto max-h-[300px] flex flex-col gap-2">
+                {chatHistory.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No prior communication. Start a conversation below.</p>
+                ) : (
+                  chatHistory.map((m, i) => (
+                    <div key={i} className={`flex ${m.sender === 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`p-3 rounded-xl max-w-[85%] text-sm shadow-sm ${m.sender === 'CUSTOMER' ? 'bg-[#004f20] text-white rounded-br-none' : 'bg-gray-100 text-gray-800 border border-gray-200 rounded-bl-none'}`}>
+                        {m.text}
+                      </div>
+                    </div>
+                  ))
+                )}
+             </div>
+             <div className="p-3">
+                <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-[#006e2d]">
+                  <input 
+                     type="text"
+                     placeholder="Type your message..."
+                     value={chatMessage}
+                     onChange={e => setChatMessage(e.target.value)}
+                     onKeyDown={e => e.key === 'Enter' && submitChat()}
+                     className="flex-1 bg-transparent border-none text-sm focus:outline-none focus:ring-0 px-2"
+                  />
+                  <button disabled={chatSending || !chatMessage.trim()} onClick={submitChat} className="p-2 rounded-lg bg-[#004f20] text-white hover:bg-[#003d18] transition-colors disabled:opacity-50">
+                    {chatSending ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Send className="w-4 h-4"/>}
+                  </button>
+                </div>
+             </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
