@@ -6,7 +6,8 @@ import {
 import Sidebar from '../components/Sidebar';
 import KPICard from '../components/KPICard';
 import SkeletonLoader from '../components/SkeletonLoader';
-import { Search, Bell, AlertTriangle, Megaphone, TrendingDown } from 'lucide-react';
+import { Search, AlertTriangle, Megaphone, TrendingDown } from 'lucide-react';
+import NotificationBell from '../components/NotificationPanel';
 import api from '../api/axios';
 
 const HEATMAP_ROWS = ['Agri-Loans', 'MSME Credit', 'Retail Per', 'Commercial'];
@@ -108,9 +109,7 @@ export default function Dashboard() {
                 type="text"
               />
             </div>
-            <button className="w-10 h-10 rounded-full bg-[#d9e6da] flex items-center justify-center text-[#3d4a3d] hover:bg-[#1db954] hover:text-white transition-all">
-              <Bell className="w-5 h-5" />
-            </button>
+            <NotificationBell />
             <div className="w-10 h-10 rounded-full bg-[#d9e6da] overflow-hidden border-2 border-white shadow-sm flex items-center justify-center text-[#131e17] font-bold">
               A
             </div>

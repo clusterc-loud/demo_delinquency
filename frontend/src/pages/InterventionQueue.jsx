@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Clock, Send, CheckCircle, UserCheck, MessageSquare, Zap, Search } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import NotificationBell from '../components/NotificationPanel';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
 import api from '../api/axios';
@@ -148,8 +149,13 @@ export default function InterventionQueue() {
         {/* Left Queue Panel */}
         <div className="w-[40%] border-r border-[#e4f1e5] flex flex-col">
           <div className="p-6 border-b border-[#e4f1e5]">
-            <h1 className="text-2xl font-extrabold text-[#131e17]">Intervention Queue</h1>
-            <p className="text-sm text-[#3d4a3d] mt-1">{queue.length} accounts awaiting action</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-extrabold text-[#131e17]">Intervention Queue</h1>
+                <p className="text-sm text-[#3d4a3d] mt-1">{queue.length} accounts awaiting action</p>
+              </div>
+              <NotificationBell />
+            </div>
             <div className="mt-4 relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input

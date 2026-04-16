@@ -13,6 +13,10 @@ const chatMessageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now,
+  },
+  unreadByAdmin: {
+    type: Boolean,
+    default: false,
   }
 });
 
