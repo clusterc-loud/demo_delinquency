@@ -427,4 +427,4 @@ const simulateMarketShock = async (req, res, next) => {
   }
 };
 
-module.exports = { getHealthSummary, simulateScenario, simulateTransaction, updateAlertPreferences, requestCounsellor, payEmi, simulateMarketShock };
+module.exports = { getHealthSummary, acceptRestructure, simulateScenario, simulateTransaction, updateAlertPreferences, requestCounsellor, payEmi, simulateMarketShock };

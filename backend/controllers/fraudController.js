@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const FraudFlag = require('../models/FraudFlag');
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
@@ -100,11 +101,16 @@ const getFraudCases = async (req, res, next) => {
 const getFraudEvidence = async (req, res, next) => {
   try {
     const { customerId } = req.params;
+    
+    // Flexible lookup: Find by custom ID string OR its MongoDB _id
+    const customer = await Customer.findOne({
+      $or: [
+        { customerId },
+        { _id: mongoose.Types.ObjectId.isValid(customerId) ? customerId : null }
+      ]
+    });
 
-    const customer = await Customer.findOne({ customerId });
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
+    if (!customer) return res.status(404).json({ message: 'Customer record not found' });
 
     const flag = await FraudFlag.findOne({ customerId: customer._id });
     if (!flag) {
@@ -153,7 +159,12 @@ const recordDecision = async (req, res, next) => {
       return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
-    const customer = await Customer.findOne({ customerId });
+    const customer = await Customer.findOne({
+      $or: [
+        { customerId },
+        { _id: mongoose.Types.ObjectId.isValid(customerId) ? customerId : null }
+      ]
+    });
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
@@ -207,8 +218,19 @@ const recordDecision = async (req, res, next) => {
 const syncFraudScore = async (req, res, next) => {
   try {
     const { customerId } = req.params;
-    const customer = await Customer.findOne({ customerId });
-    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+    
+    // Flexible lookup for ML Sync
+    const customer = await Customer.findOne({
+      $or: [
+        { customerId },
+        { _id: mongoose.Types.ObjectId.isValid(customerId) ? customerId : null }
+      ]
+    });
+
+    if (!customer) {
+       console.error(`[Fraud] Sync failed: Customer ${customerId} not found.`);
+       return res.status(404).json({ message: 'Customer not found' });
+    }
 
     // 1. Get score from ML service
     const fraudScore = await getLatestFraudScore(customer);

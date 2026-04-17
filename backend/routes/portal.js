@@ -7,6 +7,7 @@ const {
   updateAlertPreferences,
   requestCounsellor,
   payEmi,
+  acceptRestructure,
   simulateMarketShock
 } = require('../controllers/portalController');
 const protect = require('../middleware/auth');

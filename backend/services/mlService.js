@@ -31,7 +31,7 @@ const predictMSME = async (data) => {
       bus_age: data.busAge || 5,
       industry: data.industry || 0
     };
-    const response = await axios.post(`${ML_SERVICE_URL}/predict/msme`, payload);
+    const response = await axios.post(`${ML_SERVICE_URL}/predict/msme`, payload, { timeout: 10000 });
     return response.data;
   } catch (error) {
     console.warn('⚠️ MSME ML API Fallback. Error:', error.message);
@@ -51,7 +51,7 @@ const predictMSME = async (data) => {
  */
 const predictRetail = async (data) => {
   try {
-    const response = await axios.post(`${ML_SERVICE_URL}/predict/retail`, data);
+    const response = await axios.post(`${ML_SERVICE_URL}/predict/retail`, data, { timeout: 10000 });
     return response.data;
   } catch (error) {
     console.warn('⚠️ RETAIL ML API Fallback. Error:', error.message);
@@ -107,8 +107,13 @@ const getLatestFraudScore = async (customer) => {
       return Math.round(fraudProb * 100);
     }
   } catch (error) {
-    console.warn('Fraud Score ML Fallback:', error.message);
-    return 50; // Neutral fallback
+    console.error(`[mlService] Fraud Score Sync Error for ${customer.customerId}:`, error.message);
+    if (error.code === 'ECONNABORTED') {
+      console.warn('⚠️ ML Service request timed out.');
+    } else if (error.code === 'ECONNREFUSED') {
+      console.warn('⚠️ ML Service is unreachable (Connection Refused).');
+    }
+    return 50; // Neutral fallback if ML fails
   }
 };
 

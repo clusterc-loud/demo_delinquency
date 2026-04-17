@@ -11,20 +11,24 @@ import {
   Leaf,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../i18n/LanguageContext';
 
-const NAV_LINKS = [
-  { to: '/dashboard', label: 'Portfolio Overview', icon: LayoutDashboard },
-  { to: '/flagged', label: 'Flagged Accounts', icon: Flag },
-  { to: '/interventions', label: 'Intervention Queue', icon: Clock },
-  { to: '/supply-chain', label: 'MSME Monitor', icon: Network },
-  { to: '/fraud', label: 'Fraud Review', icon: ShieldAlert },
-  { to: '#', label: 'Audit Trail', icon: History },
-  { to: '#', label: 'Settings', icon: Settings },
+const getNavLinks = (t) => [
+  { to: '/dashboard', label: t('admin.sidebar.portfolioOverview'), icon: LayoutDashboard },
+  { to: '/flagged', label: t('admin.sidebar.flaggedAccounts'), icon: Flag },
+  { to: '/interventions', label: t('admin.sidebar.interventionQueue'), icon: Clock },
+  { to: '/supply-chain', label: t('admin.sidebar.msmeMonitor'), icon: Network },
+  { to: '/fraud', label: t('admin.sidebar.fraudReview'), icon: ShieldAlert },
+  { to: '#', label: t('admin.sidebar.auditTrail'), icon: History },
+  { to: '#', label: t('admin.sidebar.settings'), icon: Settings },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const NAV_LINKS = getNavLinks(t);
 
   const handleLogout = () => {
     logout();
@@ -75,7 +79,7 @@ export default function Sidebar() {
         <div className="pt-6 px-2">
           <button className="w-full bg-[#1db954] text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
             <span className="text-lg">+</span>
-            <span>New Analysis</span>
+            <span>{t('admin.sidebar.newAnalysis')}</span>
           </button>
         </div>
       </nav>
@@ -99,7 +103,7 @@ export default function Sidebar() {
           className="text-[#131e17]/60 hover:bg-[#1db954]/5 hover:translate-x-1 flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-semibold">Sign Out</span>
+          <span className="text-sm font-semibold">{t('nav.signOut')}</span>
         </button>
       </div>
     </aside>

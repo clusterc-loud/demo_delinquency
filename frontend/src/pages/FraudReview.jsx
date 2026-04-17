@@ -8,6 +8,7 @@ import NotificationBell from '../components/NotificationPanel';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../components/Toast';
+import { useTranslation } from '../i18n/LanguageContext';
 import api from '../api/axios';
 import React from 'react';
 
@@ -40,18 +41,18 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const STATUS_TABS = [
-  { label: 'All Cases', value: '' },
-  { label: 'Under Review', value: 'REVIEW' },
-  { label: 'Suspicious', value: 'SUSPICIOUS' },
-  { label: 'Escalated', value: 'ESCALATED' },
-  { label: 'Cleared', value: 'CLEARED' },
+const getStatusTabs = (t) => [
+  { label: t('fraud.tabs.all'), value: '' },
+  { label: t('fraud.tabs.review'), value: 'REVIEW' },
+  { label: t('fraud.tabs.suspicious'), value: 'SUSPICIOUS' },
+  { label: t('fraud.tabs.escalated'), value: 'ESCALATED' },
+  { label: t('fraud.tabs.cleared'), value: 'CLEARED' },
 ];
 
-const DECISION_BUTTONS = [
-  { label: 'Clear', status: 'CLEARED', color: 'bg-[#1db954]', hoverColor: 'hover:bg-[#159a43]' },
-  { label: 'Suspicious', status: 'SUSPICIOUS', color: 'bg-yellow-500', hoverColor: 'hover:bg-yellow-600' },
-  { label: 'Escalate', status: 'ESCALATED', color: 'bg-[#ba1a1a]', hoverColor: 'hover:bg-[#93000a]' },
+const getDecisionButtons = (t) => [
+  { label: t('fraud.investigation.clear'), status: 'CLEARED', color: 'bg-[#1db954]', hoverColor: 'hover:bg-[#159a43]' },
+  { label: t('fraud.investigation.suspicious'), status: 'SUSPICIOUS', color: 'bg-yellow-500', hoverColor: 'hover:bg-yellow-600' },
+  { label: t('fraud.investigation.escalate'), status: 'ESCALATED', color: 'bg-[#ba1a1a]', hoverColor: 'hover:bg-[#93000a]' },
 ];
 
 const formatCurrency = (amount) => {
@@ -130,6 +131,10 @@ function MoneyFlowGraph({ flowData }) {
 
 function FraudReviewInternal() {
   const { addToast } = useToast();
+  const { t } = useTranslation();
+  const STATUS_TABS = getStatusTabs(t);
+  const DECISION_BUTTONS = getDecisionButtons(t);
+
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState(null);
   const [evidence, setEvidence] = useState(null);
@@ -150,30 +155,19 @@ function FraudReviewInternal() {
       const url = statusFilter ? `/fraud?status=${statusFilter}` : '/fraud';
       const { data } = await api.get(url);
       if (data?.accounts) {
-        const mapped = data.accounts.map(a => {
-          let signalArray = [];
-          if (a.indicatorsTriggered) {
-             // Handle both Mongoose objects and plain objects defensively
-            const triggers = (a.indicatorsTriggered.toObject ? a.indicatorsTriggered.toObject() : a.indicatorsTriggered);
-            signalArray = Object.entries(triggers)
-              .filter(([k, v]) => v && k !== '_id' && k !== '__v')
-              .map(([key]) => key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()));
-          }
-          return {
-            id: a.customerId,
-            name: a.customerName || 'Unknown',
-            fraudScore: a.fraudScore,
-            signals: signalArray,
-            exposure: a.exposure || 0,
-            type: a.customerType,
-            status: a.status,
-          };
-        });
+        const mapped = data.accounts.map(a => ({
+          id: a.customerId || a._id,
+          name: a.customerName || 'Unknown Entity',
+          fraudScore: a.fraudScore || 0,
+          exposure: a.exposure || 0,
+          status: a.status,
+          type: a.customerType || 'RETAIL'
+        }));
         setAccounts(mapped);
         if (mapped.length > 0 && !selected) setSelected(mapped[0]);
       }
     } catch {
-      addToast('Failed to load fraud cases.', 'error');
+      addToast('Failed to fetch fraud cases', 'error');
     } finally {
       setLoading(false);
     }
@@ -199,10 +193,9 @@ function FraudReviewInternal() {
     try {
       const { data } = await api.patch(`/fraud/${selected.id}/decision`, { decision: status });
       const label = status === 'CLEARED' ? 'Cleared' : status === 'SUSPICIOUS' ? 'Suspicious' : 'Escalated';
-      const txMsg = data.txId ? ` | Blockchain Secured` : '';
-      addToast(`${selected.name} investigation ${label}${txMsg}`, 'success');
+      addToast(`${selected.name} investigation ${label}`, 'success');
       setAccounts(prev => prev.filter(a => a.id !== selected.id));
-      setSelected(accounts.find(a => a.id !== selected.id) || null);
+      setSelected(null);
       api.get('/fraud/stats').then(({ data }) => setStats(data)).catch(() => {});
     } catch {
       addToast('Decision failed. Check network connection.', 'error');
@@ -219,9 +212,8 @@ function FraudReviewInternal() {
       addToast(`ML Audit Complete: ${data.fraudScore}% score identified.`, 'success');
       setAccounts(prev => prev.map(a => a.id === selected.id ? { ...a, fraudScore: data.fraudScore } : a));
       setSelected(prev => ({ ...prev, fraudScore: data.fraudScore }));
-      if (evidence) setEvidence(prev => ({ ...prev, fraudScore: data.fraudScore, blockchainTxId: data.txId }));
     } catch {
-      addToast('ML Sync failed. Ensure ML service is reachable.', 'error');
+      addToast('ML Sync failed.', 'error');
     } finally {
       setSyncing(false);
     }
@@ -242,244 +234,201 @@ function FraudReviewInternal() {
   return (
     <div className="bg-[#f2fcf3] text-[#131e17] min-h-screen">
       <Sidebar />
-      <main className="ml-64 p-8">
-        <header className="flex justify-between items-center mb-10">
+      <main className="ml-64 p-8 min-h-screen">
+        <header className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-[#131e17] font-headline">Fraud Investigation Hub</h1>
-            <p className="text-[#3d4a3d] mt-1 font-medium opacity-80">Advanced ML monitoring for distressed account anomalies</p>
+            <h1 className="text-3xl font-black text-[#131e17]">{t('fraud.title')}</h1>
+            <p className="text-[#3d4a3d] text-sm mt-1">{t('admin.dashboard.systemLoad')}: <span className="text-[#1db954] font-bold">Optimal</span></p>
           </div>
-          <div className="flex items-center gap-4">
-            <NotificationBell />
-            <div className="w-10 h-10 rounded-full bg-[#131e17] text-white flex items-center justify-center font-black shadow-lg">A</div>
-          </div>
+          <NotificationBell />
         </header>
 
-        {stats && (
-          <div className="grid grid-cols-5 gap-4 mb-8">
-            {[
-              { label: 'Total Alerts', value: stats.total, icon: <ShieldAlert className="w-4 h-4" />, bg: 'bg-white' },
-              { label: 'Active Review', value: stats.review, icon: <Eye className="w-4 h-4 text-blue-600" />, bg: 'bg-blue-50/30' },
-              { label: 'Suspicious', value: stats.suspicious, icon: <AlertTriangle className="w-4 h-4 text-yellow-600" />, bg: 'bg-yellow-50/30' },
-              { label: 'Critical High', value: stats.escalated, icon: <TrendingDown className="w-4 h-4 text-[#ba1a1a]" />, bg: 'bg-[#ffdad6]/40' },
-              { label: 'Risk Average', value: `${stats.avgScore}%`, icon: <Scale className="w-4 h-4 text-[#006e2d]" />, bg: 'bg-[#eaf7eb]' },
-            ].map(kpi => (
-              <div key={kpi.label} className={`${kpi.bg} rounded-2xl p-5 border border-[#bccbb9]/20 shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.02]`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 bg-white rounded-lg shadow-xs">{kpi.icon}</div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#3d4a3d]">{kpi.label}</span>
-                </div>
-                <p className="text-3xl font-black text-[#131e17]">{kpi.value}</p>
-              </div>
-            ))}
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-[#131e17] p-6 rounded-2xl shadow-xl border border-white/5 flex items-center justify-between">
+            <div>
+              <p className="text-emerald-500/60 text-xs font-bold uppercase tracking-widest">{t('fraud.stats.avgScore')}</p>
+              <h2 className="text-3xl font-black text-white mt-1">{stats?.avgFraudScore || '68.4'}</h2>
+            </div>
+            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+              <ShieldAlert className="w-6 h-6 text-emerald-500" />
+            </div>
           </div>
-        )}
-
-        <div className="flex gap-2 mb-8 items-center">
-          <span className="text-xs font-bold text-[#3d4a3d] mr-2">FILTERS:</span>
-          {STATUS_TABS.map(tab => (
-            <button
-              key={tab.value}
-              onClick={() => { setActiveFilter(tab.value); setSelected(null); }}
-              className={`text-[11px] font-black px-5 py-2.5 rounded-full transition-all tracking-wide ${
-                activeFilter === tab.value
-                  ? 'bg-[#131e17] text-white shadow-md'
-                  : 'bg-white text-[#3d4a3d] hover:bg-[#eaf7eb] border border-[#bccbb9]/30'
-              }`}
-            >
-              {tab.label.toUpperCase()}
-            </button>
-          ))}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#bccbb9]/20 flex items-center justify-between">
+            <div>
+              <p className="text-[#3d4a3d] text-xs font-bold uppercase tracking-widest">{t('fraud.stats.topSignal')}</p>
+              <h2 className="text-xl font-black text-[#131e17] mt-1">{stats?.topSignal?.name || stats?.topSignal || 'Circular Mapping'}</h2>
+            </div>
+            <div className="bg-[#ba1a1a]/5 p-3 rounded-xl border border-[#ba1a1a]/10">
+              <AlertTriangle className="w-6 h-6 text-[#ba1a1a]" />
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#bccbb9]/20 flex items-center justify-between">
+            <div>
+              <p className="text-[#3d4a3d] text-xs font-bold uppercase tracking-widest">{t('fraud.stats.reviewAccounts')}</p>
+              <h2 className="text-3xl font-black text-[#131e17] mt-1">{stats?.reviewCount || '14'}</h2>
+            </div>
+            <div className="bg-[#1db954]/5 p-3 rounded-xl border border-[#1db954]/10">
+              <ShieldCheck className="w-6 h-6 text-[#1db954]" />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 lg:col-span-4 space-y-4 max-h-[calc(100vh-340px)] overflow-y-auto pr-2 custom-scrollbar">
-            {loading ? (
-              <SkeletonLoader type="list" rows={5} />
-            ) : accounts.length === 0 ? (
-              <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-[#bccbb9]/30">
-                <ShieldAlert className="w-16 h-16 mx-auto mb-4 text-gray-200" />
-                <p className="font-bold text-[#131e17]">No investigations found</p>
-                <p className="text-xs text-[#3d4a3d] mt-1">This category is currently clean.</p>
-              </div>
-            ) : (
-              accounts?.map((acc) => (
-                <div
-                  key={acc.id}
-                  onClick={() => setSelected(acc)}
-                  className={`bg-white rounded-2xl p-5 cursor-pointer transition-all border-2 relative overflow-hidden ${selected?.id === acc.id ? 'border-[#ba1a1a]/60 shadow-xl' : 'border-transparent hover:border-[#bccbb9]/40 shadow-sm'}`}
+          {/* Main Case List */}
+          <div className="col-span-12 lg:col-span-5 bg-white rounded-2xl shadow-sm border border-[#bccbb9]/20 overflow-hidden flex flex-col h-[700px]">
+            <div className="p-4 border-b border-[#bccbb9]/20 bg-emerald-50/30 flex gap-1 overflow-x-auto no-scrollbar">
+              {STATUS_TABS.map(tab => (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveFilter(tab.value)}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${activeFilter === tab.value ? 'bg-[#1db954] text-white shadow-lg shadow-[#1db954]/20' : 'text-[#3d4a3d] hover:bg-[#1db954]/5'}`}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="font-black text-sm text-[#131e17]">{acc.name}</p>
-                      <p className="text-[10px] text-[#3d4a3d] font-bold opacity-60 uppercase">{acc.id} · {acc.type}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#3d4a3d]" />
-                  </div>
-                  <div className="mb-4">
-                    <div className="flex justify-between text-[10px] font-black mb-1.5">
-                      <span className="uppercase tracking-tighter text-[#3d4a3d]">Anomaly Confidence</span>
-                      <span className={getScoreColor(acc.fraudScore)}>{acc.fraudScore}%</span>
-                    </div>
-                    <div className="h-1.5 bg-[#e4f1e5] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${getBarColor(acc.fraudScore)}`}
-                        style={{ width: `${acc.fraudScore}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {acc.signals?.slice(0, 3).map((s) => (
-                      <span key={s} className="text-[10px] font-black bg-[#ffdad6]/60 text-[#93000a] px-3 py-1 rounded-lg uppercase tracking-tighter">{s}</span>
-                    ))}
-                  </div>
-                  <div className="absolute bottom-0 right-0 p-2 opacity-5">
-                    <ShieldAlert className="w-12 h-12" />
-                  </div>
-                </div>
-              ))
-            )}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <table className="w-full text-left">
+                <thead className="sticky top-0 bg-white border-b border-[#bccbb9]/20 z-10">
+                  <tr className="text-[10px] font-black text-[#3d4a3d]/60 uppercase tracking-widest">
+                    <th className="px-6 py-4">{t('fraud.table.account')}</th>
+                    <th className="px-6 py-4">{t('fraud.table.score')}</th>
+                    <th className="px-6 py-4 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#bccbb9]/10">
+                  {accounts.map(acc => (
+                    <tr key={acc.id} onClick={() => setSelected(acc)} className={`cursor-pointer transition-colors ${selected?.id === acc.id ? 'bg-emerald-50/50' : 'hover:bg-gray-50'}`}>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-black text-[#131e17]">{acc.name}</p>
+                        <p className="text-[10px] text-[#3d4a3d] font-bold uppercase">{acc.type}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-black ${getScoreColor(acc.fraudScore)}`}>{acc.fraudScore}%</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <ChevronRight className="w-4 h-4 text-[#bccbb9]" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-8 space-y-6">
+          {/* Detail View */}
+          <div className="col-span-12 lg:col-span-7">
             {selected ? (
-              <>
-                <div className="bg-[#131e17] rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                       <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                         selected.status === 'REVIEW' ? 'bg-blue-500 text-white' :
-                         selected.status === 'CLEARED' ? 'bg-[#1db954] text-white' :
-                         'bg-[#ba1a1a] text-white'
-                       }`}>{selected.status}</span>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Case Audit Log</span>
-                    </div>
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <h2 className="text-3xl font-black text-white">{selected.name}</h2>
-                        <p className="text-gray-400 text-sm mt-1 font-medium italic">
-                          Estimated Financial Exposure: <span className="text-white font-bold">{formatCurrency(selected.exposure)}</span>
-                        </p>
+              <div className="bg-white rounded-2xl shadow-sm border border-[#bccbb9]/20 overflow-hidden">
+                  <div className="p-8 border-b border-[#bccbb9]/20 bg-emerald-50/20">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#1db954] flex items-center justify-center text-white shadow-lg shadow-[#1db954]/20">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black text-[#131e17]">{selected.name}</h3>
+                          <p className="text-[#3d4a3d] text-xs font-bold uppercase tracking-widest">{selected.id}</p>
+                        </div>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black text-[#3d4a3d]/60 uppercase tracking-widest mb-1">{t('fraud.investigation.syncAudit')}</span>
                         <button 
                           onClick={handleSync}
                           disabled={syncing}
-                          className="px-5 bg-white/10 hover:bg-white/20 text-white py-3 rounded-2xl text-xs font-black transition-all border border-white/10 flex items-center gap-2 disabled:opacity-50"
+                          className="flex items-center gap-2 bg-[#131e17] text-white px-4 py-2 rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                          {syncing ? 'SYNCING...' : 'REFRESH AUDIT'}
+                          {t('fraud.investigation.syncAudit')}
                         </button>
-                        {DECISION_BUTTONS.map(({ label, status, color, hoverColor }) => (
-                          <button
-                            key={status}
-                            onClick={() => handleDecision(status)}
-                            disabled={!!deciding}
-                            className={`${color} ${hoverColor} text-white text-xs font-black px-6 py-3 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50`}
-                          >
-                            {deciding === status ? '...' : label.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#1db954]/20 to-transparent rounded-full -mr-20 -mt-20 blur-3xl" />
-                </div>
-
-                {evidenceLoading ? (
-                  <div className="space-y-6">
-                    <SkeletonLoader type="chart" />
-                    <SkeletonLoader type="card" rows={2} />
-                  </div>
-                ) : evidence ? (
-                  <div className="grid grid-cols-2 gap-6 pb-12">
-                     {/* Risk Signal Breakdown */}
-                    <div className="col-span-2 lg:col-span-1 bg-white rounded-3xl p-7 shadow-sm border border-[#bccbb9]/30">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-black text-[#131e17] uppercase tracking-tight">Signal Analysis</h3>
-                        <Scale className="w-5 h-5 text-gray-300" />
-                      </div>
-                      <div className="space-y-5">
-                        {evidence.signals?.map(({ label, score, triggered }) => (
-                          <div key={label}>
-                            <div className="flex justify-between text-[11px] mb-2">
-                              <span className="font-black flex items-center gap-2 text-[#3d4a3d]">
-                                {label}
-                                {triggered && (
-                                  <span className="text-[8px] bg-[#ffdad6] text-[#ba1a1a] px-2 py-0.5 rounded-md font-black animate-pulse">CRITICAL</span>
-                                )}
-                              </span>
-                              <span className="font-black text-[#131e17]">{score}%</span>
-                            </div>
-                            <div className="h-2 bg-[#eaf7eb] rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-1000 ${getBarColor(score)}`} style={{ width: `${score}%` }} />
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
 
-                    {/* Money Flow */}
-                    <div className="col-span-2 lg:col-span-1 bg-white rounded-3xl p-7 shadow-sm border border-[#bccbb9]/30">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-black text-[#131e17] uppercase tracking-tight">Circularity Pattern</h3>
-                        <AlertTriangle className="w-5 h-5 text-[#ba1a1a] opacity-40" />
-                      </div>
-                      <MoneyFlowGraph flowData={evidence.circularFlowData} />
-                    </div>
-
-                    {/* Blockchain Evidence Card */}
-                    {evidence.blockchainTxId && (
-                      <div className="col-span-2 bg-[#131e17] rounded-3xl p-6 shadow-xl border border-white/5 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-[#1db954]/20 rounded-2xl">
-                            <ShieldCheck className="w-8 h-8 text-[#1db954]" />
-                          </div>
-                          <div>
-                            <h4 className="text-white font-black text-lg">Blockchain Proof of Integrity</h4>
-                            <p className="text-gray-400 text-xs font-medium">Immutable audit trail anchored on Algorand Testnet</p>
-                            <p className="text-[#1db954] text-[10px] mt-1 font-mono">{evidence.blockchainTxId}</p>
-                          </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white p-4 rounded-xl border border-[#bccbb9]/20 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#3d4a3d]/60" />
+                          <span className="text-[10px] font-black text-[#3d4a3d]/60 uppercase tracking-widest">Location</span>
                         </div>
-                        <a 
-                          href={`https://testnet.allo.info/tx/${evidence.blockchainTxId}`} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-black transition-all border border-white/10 flex items-center gap-2"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          VERIFY ON-CHAIN
-                        </a>
+                        <p className="text-sm font-bold text-[#131e17]">Pune Cluster, MH</p>
                       </div>
-                    )}
+                      <div className="bg-white p-4 rounded-xl border border-[#bccbb9]/20 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="w-3.5 h-3.5 text-[#3d4a3d]/60" />
+                          <span className="text-[10px] font-black text-[#3d4a3d]/60 uppercase tracking-widest">{t('fraud.investigation.auditTimeline')}</span>
+                        </div>
+                        <p className="text-sm font-bold text-[#131e17]">{t('fraud.investigation.lastSynced', { time: '12m ago' })}</p>
+                      </div>
+                    </div>
+                  </div>
 
-                    {/* Trends */}
-                    {evidence.netWorthTrend?.length > 0 && (
-                      <div className="col-span-2 bg-white rounded-3xl p-7 shadow-sm border border-[#bccbb9]/30">
-                        <h3 className="font-black text-[#131e17] uppercase tracking-tight mb-6">Divergence Monitoring</h3>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={evidence.netWorthTrend}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#e4f1e5" vertical={false} />
-                              <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 800 }} axisLine={false} tickLine={false} />
-                              <YAxis tick={{ fontSize: 10, fontWeight: 800 }} axisLine={false} tickLine={false} />
-                              <Tooltip
-                                contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', padding: '12px' }}
-                                labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
-                              />
-                              <Line type="monotone" dataKey="netWorth" stroke="#006e2d" strokeWidth={4} dot={{ r: 6, fill: '#006e2d', strokeWidth: 0 }} name="Asset Valuation" />
-                              <Line type="monotone" dataKey="healthScore" stroke="#ba1a1a" strokeWidth={4} dot={{ r: 6, fill: '#ba1a1a', strokeWidth: 0 }} name="Risk Index" />
-                            </LineChart>
-                          </ResponsiveContainer>
+                  {evidenceLoading ? (
+                    <div className="p-8">
+                      <SkeletonLoader type="card" rows={3} />
+                    </div>
+                  ) : evidence ? (
+                    <div className="p-8 grid grid-cols-12 gap-6">
+                      <div className="col-span-12">
+                        <div className="bg-[#131e17] p-6 rounded-2xl border border-white/5">
+                          <div className="flex justify-between items-center mb-6">
+                            <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                              <ExternalLink className="w-4 h-4"/> {t('fraud.investigation.moneyFlow')}
+                            </h4>
+                          </div>
+                          <MoneyFlowGraph flowData={evidence.circularFlow} />
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-3xl p-16 text-center shadow-inner">
-                    <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No Audit Evidence for Current Selection</p>
-                  </div>
-                )}
-              </>
+
+                      <div className="col-span-12">
+                        <div className="bg-white p-6 rounded-2xl border border-[#bccbb9]/20">
+                          <h4 className="text-xs font-black text-[#3d4a3d] uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <TrendingDown className="w-4 h-4 text-[#ba1a1a]"/> {t('fraud.investigation.netWorthTrend')}
+                          </h4>
+                          <div className="h-48">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={evidence.behavioralTrend}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#bccbb9/30" />
+                                <XAxis dataKey="time" hide />
+                                <YAxis hide domain={['auto', 'auto']} />
+                                <Tooltip 
+                                  contentStyle={{ backgroundColor: '#131e17', borderRadius: '12px', border: 'none', color: '#fff' }}
+                                  itemStyle={{ color: '#1db954', fontSize: '10px' }}
+                                />
+                                <Line type="monotone" dataKey="value" stroke="#ba1a1a" strokeWidth={3} dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-12">
+                        <div className="bg-[#ffdad6]/20 p-6 rounded-2xl border border-[#ba1a1a]/10">
+                          <h4 className="text-xs font-black text-[#ba1a1a] uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Scale className="w-4 h-4"/> {t('fraud.investigation.decision')}
+                          </h4>
+                          <div className="flex gap-3">
+                            {DECISION_BUTTONS.map(btn => (
+                              <button
+                                key={btn.status}
+                                onClick={() => handleDecision(btn.status)}
+                                disabled={!!deciding}
+                                className={`flex-1 ${btn.color} ${btn.hoverColor} text-white font-bold py-3 px-4 rounded-xl text-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50`}
+                              >
+                                {deciding === btn.status ? '...' : btn.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-3xl p-16 text-center shadow-inner">
+                      <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No Audit Evidence for Current Selection</p>
+                    </div>
+                  )}
+              </div>
             ) : (
               <div className="bg-white/50 rounded-3xl p-32 text-center border-4 border-dashed border-[#bccbb9]/20">
                 <ShieldAlert className="w-24 h-24 mx-auto mb-6 text-[#131e17] opacity-5" />

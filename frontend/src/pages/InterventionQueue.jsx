@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import NotificationBell from '../components/NotificationPanel';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
+import { useTranslation } from '../i18n/LanguageContext';
 import api from '../api/axios';
 
 export function SLACountdown({ hours }) {
@@ -49,6 +50,7 @@ export default function InterventionQueue() {
   const [replying, setReplying] = useState(false);
   const [restructurePlan, setRestructurePlan] = useState(null);
   const { addToast } = useToast();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function InterventionQueue() {
       const found = queue.find((q) => q.id === customerId);
       if (found) setSelected(found);
     }
-  }, [searchParams]);
+  }, [searchParams, queue]);
 
   const generateMessage = useCallback(async (customer) => {
     setGenerating(true);
@@ -82,7 +84,6 @@ export default function InterventionQueue() {
     let chatInterval;
     if (selected) {
       generateMessage(selected);
-      // Fetch dynamic chat history
       const fetchChat = () => {
         api.get(`/chat/${selected.id}`).then(res => {
           setChatHistory(res.data.messages || []);
@@ -90,7 +91,7 @@ export default function InterventionQueue() {
       };
       
       fetchChat();
-      chatInterval = setInterval(fetchChat, 3000); // Poll every 3s for live feel
+      chatInterval = setInterval(fetchChat, 3000);
     }
     return () => {
       if (chatInterval) clearInterval(chatInterval);
@@ -118,7 +119,6 @@ export default function InterventionQueue() {
       if (data?.queue) {
         setQueue(prev => {
           if (JSON.stringify(prev) !== JSON.stringify(data.queue)) {
-             // Play notification sound visually or via toast if a P1 triggers
              const hasNewP1 = data.queue.some(q => q.priority === 'P1' && !prev.find(p => p.id === q.id));
              if (hasNewP1) addToast('New Priority Intervention Received!', 'error');
              return data.queue;
@@ -136,6 +136,7 @@ export default function InterventionQueue() {
   }, [fetchQueue]);
 
   const handleApprove = async () => {
+    if (!selected) return;
     setSendingTo(selected.id);
     try {
       await api.post(`/interventions/${selected.id}/approve`, { 
@@ -147,7 +148,7 @@ export default function InterventionQueue() {
       });
       addToast(`Intervention sent to ${selected.name}`, 'success');
       setQueue((prev) => prev.filter((q) => q.id !== selected.id));
-      setSelected(queue.find((q) => q.id !== selected.id) || null);
+      setSelected(null);
     } catch {
       addToast('Failed to send intervention.', 'error');
     } finally {
@@ -156,6 +157,7 @@ export default function InterventionQueue() {
   };
 
   const handleRouteRM = async () => {
+    if (!selected) return;
     try {
       await api.post(`/interventions/${selected.id}/route-to-rm`);
       addToast(`Routed ${selected.name} to Relationship Manager`, 'warning');
@@ -173,8 +175,8 @@ export default function InterventionQueue() {
           <div className="p-6 border-b border-[#e4f1e5]">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-extrabold text-[#131e17]">Intervention Queue</h1>
-                <p className="text-sm text-[#3d4a3d] mt-1">{queue.length} accounts awaiting action</p>
+                <h1 className="text-2xl font-extrabold text-[#131e17]">{t('interventions.title')}</h1>
+                <p className="text-sm text-[#3d4a3d] mt-1">{queue.length} {t('admin.dashboard.interventionsPending')}</p>
               </div>
               <NotificationBell />
             </div>
@@ -184,15 +186,15 @@ export default function InterventionQueue() {
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Search by name or ID..."
+                placeholder={t('flagged.searchPlaceholder')}
                 className="w-full bg-white border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-[#1db954]"
               />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {(queue || []).filter(q => 
-              (q.name || "").toLowerCase().includes((searchTerm || "").toLowerCase()) || 
-              (q.id || "").toString().includes(searchTerm || "")
+            {queue.filter(q => 
+              q.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+              q.id.toString().includes(searchTerm)
             ).map((item) => (
               <div
                 key={item.id}
@@ -233,9 +235,9 @@ export default function InterventionQueue() {
         {selected ? (
           <div className="flex-1 flex flex-col">
             {/* Customer header */}
-            <div className="bg-[#131e17] px-8 py-5 flex justify-between items-center">
+            <div className="bg-[#131e17] px-8 py-5 flex justify-between items-center text-white">
               <div>
-                <h2 className="text-lg font-bold text-white">{selected.name}</h2>
+                <h2 className="text-lg font-bold">{selected.name}</h2>
                 <p className="text-xs text-gray-400">{selected.id} · Health Score: {selected.healthScore}</p>
               </div>
               <div className="flex gap-3">
@@ -251,9 +253,7 @@ export default function InterventionQueue() {
               </div>
             </div>
 
-            {/* Content Area */}
-            <div className={`flex-1 overflow-y-auto p-8 bg-[#eaf7eb] ${restructurePlan ? 'pt-4' : ''}`}>
-              {/* Dynamic Chat History */}
+            <div className="flex-1 overflow-y-auto p-8 bg-[#eaf7eb]">
               <div className="mb-8 space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <MessageSquare className="w-4 h-4 text-[#006e2d]" />
@@ -267,7 +267,7 @@ export default function InterventionQueue() {
                     </div>
                   </div>
                 )) : (
-                  <div className="text-center py-6 text-gray-400 text-sm">No active chat history. Send a message to initiate communication.</div>
+                  <div className="text-center py-6 text-gray-400 text-sm">No active chat history.</div>
                 )}
                 <div className="mt-4 flex gap-2">
                   <input 
@@ -277,103 +277,37 @@ export default function InterventionQueue() {
                     placeholder="Type a direct reply..."
                     className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm"
                   />
-                  <button onClick={handleSendChat} disabled={replying} className="bg-[#1db954] text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-[#159a43]">
+                  <button onClick={handleSendChat} disabled={replying} className="bg-[#1db954] text-white px-4 py-2 rounded-xl font-bold">
                      <Send className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              
-              {/* Restructuring Workshop (If applicable) */}
-              {restructurePlan && (
-                <div className="mb-8 p-6 bg-white rounded-xl border-2 border-[#1db954]/20 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-2 opacity-5"><Zap className="w-16 h-16" /></div>
-                  <h3 className="text-sm font-black text-[#131e17] uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-500" /> Restructuring Workshop (Editable)
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div>
-                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Original EMI</label>
-                      <p className="text-sm font-black text-gray-400">₹{restructurePlan.originalEmi.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Proposed EMI</label>
-                      <input 
-                        type="number" 
-                        value={restructurePlan.revisedEmi} 
-                        onChange={e => setRestructurePlan({...restructurePlan, revisedEmi: Number(e.target.value)})}
-                        className="bg-[#f0fdf1] border-none rounded-lg px-3 py-1 text-sm font-black w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Extension (Months)</label>
-                      <input 
-                        type="number" 
-                        value={restructurePlan.tenureExtensionMonths} 
-                        onChange={e => setRestructurePlan({...restructurePlan, tenureExtensionMonths: Number(e.target.value)})}
-                        className="bg-[#f0fdf1] border-none rounded-lg px-3 py-1 text-sm font-black w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Projected Score Recovery</label>
-                      <p className="text-sm font-black text-[#006e2d]">+{Math.round((1 - restructurePlan.revisedEmi/restructurePlan.originalEmi) * 100)}% Boost</p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="text-[10px] font-bold text-[#3d4a3d] uppercase tracking-widest block mb-1">Explainability Logic (Sent to Customer)</label>
-                    <textarea 
-                      value={restructurePlan.logic}
-                      onChange={e => setRestructurePlan({...restructurePlan, logic: e.target.value})}
-                      className="w-full bg-[#f0fdf1] border-none rounded-lg px-4 py-2 text-xs italic leading-relaxed"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center gap-2 mb-4 mt-8">
                 <Zap className="w-4 h-4 text-[#006e2d]" />
-                <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">AI-Generated {activeType} Reply Preview</span>
+                <span className="text-xs font-bold text-[#3d4a3d] uppercase tracking-widest">{t('interventions.aiIntervention')}</span>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm min-h-[200px]">
-                {generating ? (
-                  <div className="space-y-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-3 shimmer rounded-full" style={{ width: `${70 + Math.random() * 30}%` }} />
-                    ))}
-                  </div>
-                ) : (
-                  <pre className="whitespace-pre-wrap font-body text-sm text-[#131e17] leading-relaxed">
-                    {message}
-                  </pre>
+                {generating ? <SkeletonLoader type="card" rows={3} /> : (
+                  <textarea 
+                    className="w-full bg-transparent border-none text-sm text-[#131e17] leading-relaxed resize-none h-32 focus:ring-0"
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                  />
                 )}
               </div>
-            </div>            {/* Action Footer - High Contrast Floating Bar */}
-            <div className="border-t border-emerald-900 bg-[#062411] px-10 py-6 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50">
-              <button
-                onClick={handleRouteRM}
-                className="flex items-center gap-2 text-sm font-bold text-emerald-100/70 px-4 py-2 rounded-xl hover:bg-white/5 transition-colors"
-              >
-                <UserCheck className="w-4 h-4" />
-                Route to Counsellor
+            </div>
+            <div className="border-t border-emerald-900 bg-[#062411] px-10 py-6 flex justify-between items-center shadow-2xl">
+              <button onClick={handleRouteRM} className="flex items-center gap-2 text-sm font-bold text-emerald-100/70">
+                <UserCheck className="w-4 h-4" /> Route to Counsellor
               </button>
               <div className="flex gap-4">
                 <button
-                  onClick={generateMessage.bind(null, selected)}
-                  className="text-sm font-bold px-5 py-2.5 rounded-xl border border-emerald-700/50 text-emerald-100 hover:bg-emerald-900 transition-colors"
-                >
-                  Regenerate
-                </button>
-                <button
                   onClick={handleApprove}
-                  disabled={sendingTo === selected.id || generating}
-                  className="flex items-center gap-3 bg-[#1db954] text-white text-sm font-black px-8 py-3 rounded-xl hover:bg-[#159a43] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  disabled={!!sendingTo || generating}
+                  className="flex items-center gap-3 bg-[#1db954] text-white text-sm font-black px-8 py-3 rounded-xl hover:bg-[#159a43] transition-all disabled:opacity-50"
                 >
-                  {sendingTo === selected.id ? (
-                    <span className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
-                  APPROVE & SEND
+                  <Send className="w-5 h-5" />
+                  {t('interventions.approve')} & SEND
                 </button>
               </div>
             </div>

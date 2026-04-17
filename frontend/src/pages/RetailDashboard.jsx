@@ -414,9 +414,6 @@ export default function RetailDashboard({ data, loading, onHelpSelect, onPayEmi,
         </div>
       </main>
 
-      {/* Language Toggle */}
-      <LanguageToggle />
-
       {/* Chat Modal */}
       {chatOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

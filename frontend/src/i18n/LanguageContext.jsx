@@ -61,7 +61,8 @@ export function useTranslation() {
       });
     }
 
-    return value;
+    // Always return a string to avoid React "Objects are not valid as a React child" crashes
+    return typeof value === 'string' ? value : String(value);
   }, [lang]);
 
   const { lang: currentLang } = useContext(LanguageContext);

@@ -3,12 +3,14 @@ import { Activity, Bell, Settings, Search, Download, LogOut, ShieldAlert, BarCha
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { useTranslation } from '../i18n/LanguageContext';
 import api from '../api/axios';
 
 export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { t } = useTranslation();
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
@@ -64,7 +66,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
       <aside className="hidden md:flex flex-col h-full py-6 bg-emerald-50 dark:bg-emerald-950 w-64 border-r-0 font-medium antialiased shrink-0">
         <div className="px-6 mb-10">
           <h1 className="text-2xl font-bold text-emerald-900 dark:text-emerald-50 tracking-tight">VittChetak</h1>
-          <p className="text-xs text-green-600 font-semibold uppercase tracking-widest mt-1">Premium Growth Tier</p>
+          <p className="text-xs text-green-600 font-semibold uppercase tracking-widest mt-1">{t('nav.premiumTier')}</p>
         </div>
         <nav className="flex-1 px-4 space-y-2">
           <button 
@@ -72,21 +74,21 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'overview' ? 'text-green-700 dark:text-green-300 font-bold border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
           >
             <span className="material-symbols-outlined font-bold">dashboard</span>
-            <span>Dashboard</span>
+            <span>{t('nav.dashboard')}</span>
           </button>
           <button 
             onClick={() => setActiveTab('transactions')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'transactions' ? 'text-green-700 dark:text-green-300 font-bold border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
           >
             <span className="material-symbols-outlined">receipt_long</span>
-            <span>EMI Transactions</span>
+            <span>{t('nav.emiTransactions')}</span>
           </button>
           <button 
             onClick={() => setActiveTab('health')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'health' ? 'text-green-700 dark:text-green-300 font-bold border-r-4 border-green-600 bg-emerald-100/50 dark:bg-emerald-900/20' : 'text-emerald-800/70 dark:text-emerald-200/50 hover:text-green-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
           >
             <span className="material-symbols-outlined">health_and_safety</span>
-            <span>Financial Health</span>
+            <span>{t('nav.financialHealth')}</span>
           </button>
         </nav>
         <div className="px-4 mt-auto">
@@ -99,7 +101,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
           </div>
           <button onClick={handleLogout} className="w-full mt-4 text-emerald-800/70 dark:text-emerald-200/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:text-green-600 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all duration-200 font-bold">
             <LogOut className="w-5 h-5" />
-            <span className="text-sm">Sign Out</span>
+            <span className="text-sm">{t('nav.signOut')}</span>
           </button>
         </div>
       </aside>
@@ -109,7 +111,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
           <div className="flex items-center flex-1">
             <div className="relative w-full max-w-md">
               <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-              <input className="w-full bg-surface-container-high border-none rounded-full py-2 pl-10 pr-4 text-sm" placeholder="Search insights..." type="text"/>
+              <input className="w-full bg-surface-container-high border-none rounded-full py-2 pl-10 pr-4 text-sm" placeholder={t('msme.searchPlaceholder')} type="text"/>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -129,16 +131,16 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
                    <div className="bg-emerald-500/20 p-2 rounded-lg">
                      <Zap className="w-6 h-6 text-[#1db954] animate-pulse" />
                    </div>
-                   <span className="text-xs font-black text-[#1db954] uppercase tracking-[0.3em]">VittChetak Verified Relief</span>
+                   <span className="text-xs font-black text-[#1db954] uppercase tracking-[0.3em]">{t('msme.vittChetakVerified')}</span>
                  </div>
                  <h2 className="text-4xl font-black text-white leading-tight">
-                   Your Custom Restructuring Plan is <span className="text-[#1db954]">Ready.</span>
+                   {t('msme.restructuringReady')}
                  </h2>
                  
                  {data.restructuringProposal.messagePreview && (
                    <div className="mt-6 bg-[#004118] border-l-4 border-[#1db954] p-4 rounded-r-xl w-full max-w-lg">
                      <p className="text-[10px] font-bold text-[#1db954] uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                       <MessageSquare className="w-4 h-4"/> Official Message from Admin
+                       <MessageSquare className="w-4 h-4"/> {t('msme.adminMessage')}
                      </p>
                      <p className="text-sm text-emerald-50 italic leading-relaxed font-medium">
                        "{data.restructuringProposal.messagePreview}"
@@ -147,7 +149,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
                  )}
 
                  <p className="text-emerald-100/60 mt-6 text-lg font-medium leading-relaxed">
-                   Our AI analysts and bank admins have finalized your relief proposal. Accepting this plan will lower your immediate EMIs and protect your credit score.
+                   {t('msme.restructuringDescription')}
                  </p>
                  <div className="flex flex-wrap gap-4 mt-8">
                     <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/10">

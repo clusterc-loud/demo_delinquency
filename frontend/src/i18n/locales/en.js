@@ -97,6 +97,151 @@ const en = {
     at_risk: 'At Risk',
     critical: 'Critical',
   },
+
+  // Admin Portal
+  admin: {
+    sidebar: {
+      portfolioOverview: 'Portfolio Overview',
+      flaggedAccounts: 'Flagged Accounts',
+      interventionQueue: 'Intervention Queue',
+      msmeMonitor: 'MSME Monitor',
+      fraudReview: 'Fraud Review',
+      auditTrail: 'Audit Trail',
+      settings: 'Settings',
+      newAnalysis: 'New Analysis'
+    },
+    dashboard: {
+      title: 'Portfolio Intelligence',
+      stableEcosystem: 'Stable Ecosystem',
+      marketConditions: 'Market Conditions',
+      searchPlaceholder: 'Search accounts...',
+      riskHeatmap: 'Risk Heatmap: Regional Exposure',
+      riskIntensity: 'Risk Intensity by product and geographical cluster',
+      lowRisk: 'Low Risk',
+      critical: 'Critical',
+      segmentBreakdown: 'Segment Breakdown',
+      assetDistribution: 'Asset distribution by portfolio type',
+      msmeCredits: 'MSME Credits',
+      retailLoans: 'Retail Loans',
+      riskScoreDistribution: 'Risk Score Distribution',
+      scoreDescription: 'Population density across credit score tiers (0-100)',
+      lastWeek: 'Last Week',
+      current: 'Current',
+      safe: 'Safe',
+      default: 'Default',
+      aiRecommended: 'AI Recommended Actions',
+      insightsGenerated: 'Insights generated {time} mins ago',
+      outcomes: 'Intervention Outcomes',
+      outcomesDesc: 'Monthly success rate (%)',
+      accountsFlagged: 'Accounts Flagged Today',
+      p1Critical: 'P1 Critical Cases',
+      interventionsPending: 'Interventions Pending',
+      recoveryRate: 'Recovery Rate 30d',
+      totalExposure: 'Total Exposure',
+      activeUsers: 'Active Users',
+      systemLoad: 'System Load'
+    }
+  },
+
+  // MSME Specific
+  msme: {
+    sidebarRole: 'VittChetak Business',
+    searchPlaceholder: 'Search insights...',
+    restructuringReady: 'Your Custom Restructuring Plan is Ready.',
+    vittChetakVerified: 'VittChetak Verified Relief',
+    adminMessage: 'Official Message from Admin',
+    restructuringDescription: 'Our AI analysts and bank admins have finalized your relief proposal. Accepting this plan will lower your immediate EMIs and protect your credit score.',
+    acceptPlan: 'Accept & Apply Plan',
+    accepted: 'Plan Accepted',
+    reject: 'Reject',
+    viewStatement: 'View Detailed Statement',
+    shockSimulator: 'Shock Simulator',
+    overview: 'Overview',
+    transactions: 'Transactions',
+    health: 'Health',
+    creditLimit: 'Credit Limit',
+    utilization: 'Utilization',
+    activeLoans: 'Active Loans',
+    nextRepayment: 'Next Repayment',
+    businessHealthScore: 'Business Health Score',
+    cashFlowTrend: 'Cash Flow Trend',
+    projectedRevenue: 'Projected Revenue',
+    taxComplianceStatus: 'Tax Compliance Status',
+    inventoryTurnover: 'Inventory Turnover',
+  },
+
+  // Fraud Module
+  fraud: {
+    title: 'Fraud Investigation Lab',
+    stats: {
+      avgScore: 'Avg Fraud Score',
+      topSignal: 'Top Alert Signal',
+      reviewAccounts: 'Accounts Under Review'
+    },
+    tabs: {
+      all: 'All Cases',
+      review: 'Under Review',
+      suspicious: 'Suspicious',
+      escalated: 'Escalated',
+      cleared: 'Cleared'
+    },
+    table: {
+      account: 'Account',
+      exposure: 'Exposure',
+      signals: 'Signals',
+      actions: 'Actions',
+      score: 'Score'
+    },
+    investigation: {
+      panelTitle: 'Live Investigation: {name}',
+      auditTimeline: 'Audit Timeline',
+      scoreHistory: 'Score History',
+      indicators: 'Risk Indicators',
+      decision: 'Take Official Decision',
+      syncAudit: 'Sync Live ML Audit',
+      lastSynced: 'Last synced: {time}',
+      moneyFlow: 'Circular Money Flow (Live Graph)',
+      netWorthTrend: 'HNI Net Worth Divergence',
+      clear: 'Clear',
+      suspicious: 'Suspicious',
+      escalate: 'Escalate'
+    }
+  },
+
+  // Flagged Accounts
+  flagged: {
+    title: 'Flagged Accounts',
+    count: '{count} accounts under active risk surveillance',
+    searchPlaceholder: 'Search by name or ID...',
+    table: {
+      customer: 'Customer',
+      segment: 'Segment',
+      health: 'Health',
+      pattern: 'Pattern',
+      fraud: 'Fraud Score',
+      priority: 'Priority',
+      status: 'Status',
+      shapSignals: 'SHAP Feature Signals',
+      aiRecommendation: 'AI Recommendation',
+      sendIntervention: 'Send Intervention',
+      fullProfile: 'Full 360° Profile',
+      noAccounts: 'No accounts match your filters.'
+    }
+  },
+
+  // Interventions
+  interventions: {
+    title: 'Intervention Queue',
+    batchActions: 'Batch Actions',
+    processBatch: 'Process Flagged Batch',
+    customer: 'Customer',
+    riskPattern: 'Risk Pattern',
+    aiIntervention: 'AI Suggested Intervention',
+    actions: 'Actions',
+    approve: 'Approve',
+    modify: 'Modify',
+    reject: 'Reject'
+  }
 };
 
 export default en;

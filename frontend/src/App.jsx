@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { LanguageProvider } from './i18n/LanguageContext';
+import LanguageToggle from './components/LanguageToggle';
 
 // Pages
 import Landing from './pages/Landing';
@@ -53,6 +54,7 @@ export default function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <LanguageToggle />
         </ToastProvider>
       </AuthProvider>
       </LanguageProvider>

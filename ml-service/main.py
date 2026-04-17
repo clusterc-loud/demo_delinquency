@@ -260,7 +260,7 @@ class RetailInput(BaseModel):
 # ENDPOINT: MSME
 # ──────────────────────────────────────────────
 @app.post("/predict/msme", summary="Vitt Chetak Index for MSME borrowers")
-async def predict_msme(data: MSMEInput):
+def predict_msme(data: MSMEInput):
     try:
         raw = data.dict()
         # ── M1: Probability of Default ────────────
@@ -334,7 +334,7 @@ async def predict_msme(data: MSMEInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/predict/retail", summary="Vitt Chetak Score for Retail borrowers")
-async def predict_retail(data: RetailInput):
+def predict_retail(data: RetailInput):
     try:
         results = {}
         # ── R1: EMI Default Risk ──────────────────

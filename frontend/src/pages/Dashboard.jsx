@@ -10,6 +10,7 @@ import { Search, AlertTriangle, Megaphone, TrendingDown } from 'lucide-react';
 import NotificationBell from '../components/NotificationPanel';
 import api from '../api/axios';
 import ChatInbox from '../components/ChatInbox';
+import { useTranslation } from '../i18n/LanguageContext';
 
 const HEATMAP_ROWS = ['Agri-Loans', 'MSME Credit', 'Retail Per', 'Commercial'];
 const HEATMAP_COLS = ['Region N', 'Region E', 'Region W', 'Region S', 'Central', 'Global'];
@@ -44,20 +45,26 @@ const AI_ACTIONS = [
   { icon: <TrendingDown className="w-5 h-5 text-[#466656]" />, bg: 'bg-[#c5e8d5]/30', title: 'Adjust Liquidity Buffers', desc: 'Expected uptick in small-ticket defaults in Q3.' },
 ];
 
-const DEFAULT_KPIS = [
-  { label: 'Accounts Flagged Today', value: 1284, delta: '+12.5%', deltaType: 'negative', sparklineData: [40, 55, 45, 70, 60, 90] },
-  { label: 'P1 Critical Cases', value: 42, delta: '-4%', deltaType: 'positive', sparklineData: [80, 75, 60, 50, 45, 35] },
-  { label: 'Interventions Sent', value: 912, delta: 'Optimal', deltaType: 'positive', sparklineData: [30, 45, 40, 65, 75, 85] },
-  { label: 'Recovery Rate', value: '88.4%', delta: '+2.1%', deltaType: 'positive', highlighted: true },
+const getInitialKPIs = (t) => [
+  { label: t('admin.dashboard.accountsFlagged'), value: 1284, delta: '+12.5%', deltaType: 'negative', sparklineData: [40, 55, 45, 70, 60, 90] },
+  { label: t('admin.dashboard.p1Critical'), value: 42, delta: '-4%', deltaType: 'positive', sparklineData: [80, 75, 60, 50, 45, 35] },
+  { label: t('admin.dashboard.interventionsPending'), value: 912, delta: 'Optimal', deltaType: 'positive', sparklineData: [30, 45, 40, 65, 75, 85] },
+  { label: t('admin.dashboard.recoveryRate'), value: '88.4%', delta: '+2.1%', deltaType: 'positive', highlighted: true },
 ];
 
 export default function Dashboard() {
-  const [kpis, setKpis] = useState(DEFAULT_KPIS);
+  const { t } = useTranslation();
+  const [kpis, setKpis] = useState(getInitialKPIs(t));
   const [areaData, setAreaData] = useState(AREA_DATA);
   const [barData, setBarData] = useState(BAR_DATA);
   const [loading, setLoading] = useState(false);
   const [recentFlags, setRecentFlags] = useState([]);
   const navigate = useNavigate();
+
+  // Re-initialize KPIs when language changes
+  useEffect(() => {
+    setKpis(getInitialKPIs(t));
+  }, [t]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -68,10 +75,10 @@ export default function Dashboard() {
       if (kpiRes.data) {
         const d = kpiRes.data;
         setKpis([
-          { label: 'Accounts Flagged Today', value: d.totalFlagged, delta: d.deltas?.totalFlagged, deltaType: 'negative', sparklineData: [40, 55, 45, 70, 60, 90] },
-          { label: 'P1 Critical Cases', value: d.p1Critical, delta: d.deltas?.p1Critical, deltaType: 'positive', sparklineData: [80, 75, 60, 50, 45, 35] },
-          { label: 'Interventions Pending', value: d.interventionsPending, delta: d.deltas?.interventionsPending, deltaType: 'positive', sparklineData: [30, 45, 40, 65, 75, 85] },
-          { label: 'Recovery Rate 30d', value: `${d.recoveryRate30d}%`, delta: d.deltas?.recoveryRate30d, deltaType: 'positive', highlighted: true },
+          { label: t('admin.dashboard.accountsFlagged'), value: d.totalFlagged, delta: d.deltas?.totalFlagged, deltaType: 'negative', sparklineData: [40, 55, 45, 70, 60, 90] },
+          { label: t('admin.dashboard.p1Critical'), value: d.p1Critical, delta: d.deltas?.p1Critical, deltaType: 'positive', sparklineData: [80, 75, 60, 50, 45, 35] },
+          { label: t('admin.dashboard.interventionsPending'), value: d.interventionsPending, delta: d.deltas?.interventionsPending, deltaType: 'positive', sparklineData: [30, 45, 40, 65, 75, 85] },
+          { label: t('admin.dashboard.recoveryRate'), value: `${d.recoveryRate30d}%`, delta: d.deltas?.recoveryRate30d, deltaType: 'positive', highlighted: true },
         ]);
       }
     } catch (_) {
@@ -96,9 +103,9 @@ export default function Dashboard() {
         {/* Header */}
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-[#131e17]">Portfolio Intelligence</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-[#131e17]">{t('admin.dashboard.title')}</h1>
             <p className="text-[#3d4a3d] font-medium mt-1">
-              Market conditions: <span className="text-[#1db954]">Stable Ecosystem</span>
+              {t('admin.dashboard.marketConditions')}: <span className="text-[#1db954]">{t('admin.dashboard.stableEcosystem')}</span>
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -106,7 +113,7 @@ export default function Dashboard() {
               <Search className="w-5 h-5 text-[#3d4a3d]" />
               <input
                 className="bg-transparent border-none focus:ring-0 text-sm w-48 p-0 outline-none"
-                placeholder="Search accounts..."
+                placeholder={t('admin.dashboard.searchPlaceholder')}
                 type="text"
               />
             </div>
@@ -134,18 +141,18 @@ export default function Dashboard() {
           <div className="col-span-12 lg:col-span-8 bg-[#eaf7eb] p-8 rounded-xl">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-xl font-bold text-[#131e17]">Risk Heatmap: Regional Exposure</h3>
-                <p className="text-sm text-[#3d4a3d]">Risk intensity by product and geographical cluster</p>
+                <h3 className="text-xl font-bold text-[#131e17]">{t('admin.dashboard.riskHeatmap')}</h3>
+                <p className="text-sm text-[#3d4a3d]">{t('admin.dashboard.riskIntensity')}</p>
               </div>
               <div className="flex items-center gap-2 text-xs font-bold">
-                <span>Low Risk</span>
+                <span>{t('admin.dashboard.lowRisk')}</span>
                 <div className="flex h-3 w-32 rounded-sm overflow-hidden">
                   <div className="bg-[#131e17] h-full w-1/4" />
                   <div className="bg-[#006e2d]/40 h-full w-1/4" />
                   <div className="bg-[#1db954] h-full w-1/4" />
                   <div className="bg-[#ba1a1a] h-full w-1/4" />
                 </div>
-                <span>Critical</span>
+                <span>{t('admin.dashboard.critical')}</span>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -176,8 +183,8 @@ export default function Dashboard() {
 
           {/* Segment Breakdown */}
           <div className="col-span-12 lg:col-span-4 bg-[#d9e6da] p-8 rounded-xl flex flex-col">
-            <h3 className="text-xl font-bold text-[#131e17] mb-2">Segment Breakdown</h3>
-            <p className="text-sm text-[#3d4a3d] mb-8">Asset distribution by portfolio type</p>
+            <h3 className="text-xl font-bold text-[#131e17] mb-2">{t('admin.dashboard.segmentBreakdown')}</h3>
+            <p className="text-sm text-[#3d4a3d] mb-8">{t('admin.dashboard.assetDistribution')}</p>
             <div className="flex-1 flex flex-col justify-center items-center relative">
               {/* Donut mockup */}
               <div className="w-48 h-48 rounded-full border-[20px] border-[#1db954] flex items-center justify-center relative">
@@ -190,8 +197,8 @@ export default function Dashboard() {
             </div>
             <div className="mt-8 space-y-3">
               {[
-                { color: 'bg-[#1db954]', label: 'MSME Credits', value: '₹4.2 Cr' },
-                { color: 'bg-[#3d4a3d]/30', label: 'Retail Loans', value: '₹2.1 Cr' },
+                { color: 'bg-[#1db954]', label: t('admin.dashboard.msmeCredits'), value: '₹4.2 Cr' },
+                { color: 'bg-[#3d4a3d]/30', label: t('admin.dashboard.retailLoans'), value: '₹2.1 Cr' },
               ].map(({ color, label, value }) => (
                 <div key={label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -208,17 +215,17 @@ export default function Dashboard() {
           <div className="col-span-12 bg-[#eaf7eb] p-8 rounded-xl">
             <div className="flex justify-between items-end mb-10">
               <div>
-                <h3 className="text-xl font-bold text-[#131e17]">Risk Score Distribution</h3>
-                <p className="text-sm text-[#3d4a3d]">Population density across credit score tiers (0-100)</p>
+                <h3 className="text-xl font-bold text-[#131e17]">{t('admin.dashboard.riskScoreDistribution')}</h3>
+                <p className="text-sm text-[#3d4a3d]">{t('admin.dashboard.scoreDescription')}</p>
               </div>
               <div className="flex gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-3 bg-[#006e2d] rounded-sm" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#3d4a3d]">Last Week</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#3d4a3d]">{t('admin.dashboard.lastWeek')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-3 bg-[#1db954]/40 rounded-sm" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#3d4a3d]">Current</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#3d4a3d]">{t('admin.dashboard.current')}</span>
                 </div>
               </div>
             </div>
@@ -241,15 +248,15 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="flex justify-between mt-4 text-[10px] font-black text-[#3d4a3d]/60 uppercase tracking-[0.2em]">
-              <span>0 (Safe)</span><span>25</span><span>50</span><span>75</span><span>100 (Default)</span>
+              <span>0 ({t('admin.dashboard.safe')})</span><span>25</span><span>50</span><span>75</span><span>100 ({t('admin.dashboard.default')})</span>
             </div>
           </div>
 
           {/* AI Intervention Chips */}
           <div className="col-span-12 bg-white/40 backdrop-blur-md p-6 rounded-xl border border-[#1db954]/20">
             <div className="flex items-center gap-4 mb-4">
-              <span className="bg-[#72fe8f] text-[#002108] px-3 py-1 rounded-full text-xs font-bold uppercase">AI Recommended Actions</span>
-              <span className="text-xs text-[#3d4a3d] italic">Insights generated 4 minutes ago</span>
+              <span className="bg-[#72fe8f] text-[#002108] px-3 py-1 rounded-full text-xs font-bold uppercase">{t('admin.dashboard.aiRecommended')}</span>
+              <span className="text-xs text-[#3d4a3d] italic">{t('admin.dashboard.insightsGenerated', { time: 4 })}</span>
             </div>
             <div className="flex flex-wrap gap-4">
               {AI_ACTIONS.map((action, i) => (
@@ -268,8 +275,8 @@ export default function Dashboard() {
           <div className="col-span-12 lg:col-span-8 bg-[#eaf7eb] p-8 rounded-xl">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-xl font-bold text-[#131e17]">Intervention Outcomes</h3>
-                <p className="text-sm text-[#3d4a3d]">Monthly success rate (%)</p>
+                <h3 className="text-xl font-bold text-[#131e17]">{t('admin.dashboard.outcomes')}</h3>
+                <p className="text-sm text-[#3d4a3d]">{t('admin.dashboard.outcomesDesc')}</p>
               </div>
             </div>
             <div className="h-48">

@@ -4,6 +4,7 @@ import { Search, Filter, ChevronDown, ChevronRight, ExternalLink } from 'lucide-
 import Sidebar from '../components/Sidebar';
 import RiskBadge from '../components/RiskBadge';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { useTranslation } from '../i18n/LanguageContext';
 import api from '../api/axios';
 
 const MOCK_ACCOUNTS = [
@@ -86,6 +87,7 @@ function FraudBar({ score }) {
 
 export default function FlaggedAccounts() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [accounts, setAccounts] = useState(MOCK_ACCOUNTS);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -122,9 +124,9 @@ export default function FlaggedAccounts() {
       <main className="ml-64 p-8">
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-[#131e17]">Flagged Accounts</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-[#131e17]">{t('flagged.title')}</h1>
             <p className="text-[#3d4a3d] font-medium mt-1">
-              {filtered.length} accounts under active risk surveillance
+              {t('flagged.count', { count: filtered.length })}
             </p>
           </div>
         </header>
@@ -138,7 +140,7 @@ export default function FlaggedAccounts() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="bg-[#dfece0] border-none rounded-full pl-10 pr-4 py-2.5 text-sm w-full outline-none focus:ring-2 focus:ring-[#006e2d]/20"
-              placeholder="Search by name or ID..."
+              placeholder={t('flagged.searchPlaceholder')}
             />
           </div>
           {/* Priority Pills */}
@@ -168,18 +170,18 @@ export default function FlaggedAccounts() {
             <div className="grid items-center px-6 py-4 bg-[#eaf7eb] text-[10px] font-black uppercase tracking-widest text-[#3d4a3d]"
               style={{ gridTemplateColumns: '1fr 1fr 80px 1fr 1fr 1fr 80px 40px' }}
             >
-              <span>Customer</span>
-              <span>Segment</span>
-              <span>Health</span>
-              <span>Pattern</span>
-              <span>Fraud Score</span>
-              <span>Priority</span>
-              <span>Status</span>
+              <span>{t('flagged.table.customer')}</span>
+              <span>{t('flagged.table.segment')}</span>
+              <span>{t('flagged.table.health')}</span>
+              <span>{t('flagged.table.pattern')}</span>
+              <span>{t('flagged.table.fraud')}</span>
+              <span>{t('flagged.table.priority')}</span>
+              <span>{t('flagged.table.status')}</span>
               <span />
             </div>
 
             {filtered.length === 0 && (
-              <div className="py-16 text-center text-[#3d4a3d]">No accounts match your filters.</div>
+              <div className="py-16 text-center text-[#3d4a3d]">{t('flagged.table.noAccounts')}</div>
             )}
 
             {filtered.map((acc) => (
@@ -226,7 +228,7 @@ export default function FlaggedAccounts() {
                   <div className="bg-[#eaf7eb]/60 px-8 py-6 border-b border-[#e4f1e5] grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
                     {/* SHAP Signals */}
                     <div>
-                      <h4 className="font-bold text-xs uppercase tracking-widest text-[#3d4a3d] mb-4">SHAP Feature Signals</h4>
+                      <h4 className="font-bold text-xs uppercase tracking-widest text-[#3d4a3d] mb-4">{t('flagged.table.shapSignals')}</h4>
                       <div className="space-y-3">
                         {acc.shap.map((s) => (
                           <div key={s.feature}>
@@ -246,7 +248,7 @@ export default function FlaggedAccounts() {
                     </div>
                     {/* AI Recommendation */}
                     <div className="md:col-span-2">
-                      <h4 className="font-bold text-xs uppercase tracking-widest text-[#3d4a3d] mb-4">AI Recommendation</h4>
+                      <h4 className="font-bold text-xs uppercase tracking-widest text-[#3d4a3d] mb-4">{t('flagged.table.aiRecommendation')}</h4>
                       <div className="bg-[#72fe8f]/20 border border-[#1db954]/20 rounded-xl p-4">
                         <p className="text-sm font-medium text-[#131e17] leading-relaxed">{acc.recommendation}</p>
                       </div>
@@ -255,13 +257,13 @@ export default function FlaggedAccounts() {
                           onClick={() => navigate(`/interventions?customerId=${acc.id}`)}
                           className="px-4 py-2 bg-[#006e2d] text-white text-sm font-bold rounded-xl hover:bg-[#004118] transition-colors"
                         >
-                          Send Intervention
+                          {t('flagged.table.sendIntervention')}
                         </button>
                         <button
                           onClick={() => navigate(`/customer/${acc.id}`)}
                           className="px-4 py-2 bg-[#d9e6da] text-[#131e17] text-sm font-bold rounded-xl hover:bg-[#c5e8d5] transition-colors"
                         >
-                          Full 360° Profile
+                          {t('flagged.table.fullProfile')}
                         </button>
                       </div>
                     </div>
