@@ -6,6 +6,9 @@ const RiskScore = require('../models/RiskScore');
 const Intervention = require('../models/Intervention');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
+const FraudFlag = require('../models/FraudFlag');
+const { getLatestFraudScore } = require('../services/mlService');
+const { recordRiskTransactionOnChain } = require('../services/blockchainService');
 
 const seedData = async () => {
     try {
@@ -18,6 +21,7 @@ const seedData = async () => {
         await Intervention.deleteMany({});
         await Chat.deleteMany({});
         await User.deleteMany({});
+        await FraudFlag.deleteMany({});
 
         console.log('Seeding Analyst User...');
         const analyst = new User({
@@ -233,7 +237,64 @@ const seedData = async () => {
         ];
         await Chat.insertMany(initialChats);
 
-        console.log('Master Seed Complete! MSME personas hardened.');
+        console.log('Seeding Fraud Flags (Live ML + Blockchain Anchoring)...');
+        const frDate = new Date();
+        const testFraudConfigs = [
+            {
+                customer: createdCustomers[2], // Rajesh Kumar
+                indicators: { circularMoneyFlow: true, unverifiedMerchants: true },
+                breakdown: { circularMoneyFlow: 89, unverifiedMerchants: 60 },
+                circularFlow: [
+                    { from: "Rajesh Kumar A/C", to: "Shell Corp A", amount: 250000, date: new Date(frDate - 86400000 * 3) },
+                    { from: "Shell Corp A", to: "Shell Corp B", amount: 240000, date: new Date(frDate - 86400000 * 2) },
+                    { from: "Shell Corp B", to: "Rajesh Kumar A/C", amount: 235000, date: new Date(frDate - 86400000 * 1) }
+                ],
+                status: 'REVIEW'
+            },
+            {
+                customer: createdCustomers[3], // Priya Singh
+                indicators: { lifestyleVsDistress: true, netWorthDivergence: true },
+                breakdown: { lifestyleVsDistress: 95, netWorthDivergence: 80 },
+                netWorth: [
+                    { month: "Jan", netWorth: 1200000, healthScore: 75 },
+                    { month: "Feb", netWorth: 1800000, healthScore: 60 },
+                    { month: "Mar", netWorth: 2500000, healthScore: 45 }
+                ],
+                status: 'ESCALATED'
+            }
+        ];
+
+        for (const cfg of testFraudConfigs) {
+            console.log(`[Seed] Generating live score for ${cfg.customer.name}...`);
+            const score = await getLatestFraudScore(cfg.customer);
+            
+            const flag = new FraudFlag({
+                customerId: cfg.customer._id,
+                fraudScore: score,
+                indicatorsTriggered: cfg.indicators,
+                signalBreakdown: cfg.breakdown,
+                circularFlowData: cfg.circularFlow || [],
+                netWorthTrend: cfg.netWorth || [],
+                status: cfg.status
+            });
+
+            try {
+                const txId = await recordRiskTransactionOnChain(
+                    cfg.customer.customerId,
+                    `Initial Seed Fraud Score`,
+                    score,
+                    score > 70 ? 'Red' : 'Green'
+                );
+                flag.blockchainTxId = txId;
+                console.log(`[Seed] Anchored ${cfg.customer.name} to Blockchain: ${txId}`);
+            } catch (err) {
+                console.warn(`[Seed] Blockchain anchoring skipped for ${cfg.customer.name}:`, err.message);
+            }
+
+            await flag.save();
+        }
+
+        console.log('Master Seed Complete! MSME personas hardened & Fraud records inserted.');
         process.exit();
     } catch (error) {
         console.error('Seed Failed:', error);

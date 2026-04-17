@@ -60,6 +60,9 @@ const fraudFlagSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  blockchainTxId: {
+    type: String,
+  },
 });
 
 module.exports = mongoose.model('FraudFlag', fraudFlagSchema);

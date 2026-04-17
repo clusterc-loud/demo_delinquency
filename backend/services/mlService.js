@@ -85,8 +85,36 @@ const checkMLHealth = async () => {
   }
 };
 
+/**
+ * Get specialized fraud score for a customer
+ * @param {Object} customer - Mongoose customer document
+ * @returns {Promise<number>} - Fraud score (0-100)
+ */
+const getLatestFraudScore = async (customer) => {
+  try {
+    if (customer.customerType === 'MSME') {
+      const result = await predictMSME(customer.mlFeatures?.msme || {});
+      // In predictMSME, safety_shield = (1 - prob_fraud) * 30.
+      // So prob_fraud = 1 - (safety_shield / 30).
+      // Let's normalize back to 0-100 fraud score.
+      const safetyShield = result.breakdown?.safety_shield || 25;
+      const probFraud = 1 - (safetyShield / 30);
+      return Math.round(probFraud * 100);
+    } else {
+      const result = await predictRetail(customer.mlFeatures?.retail || {});
+      // In predictRetail, result.breakdown.r3.fraud_prob is available if model R3 is active
+      const fraudProb = result.breakdown?.r3?.fraud_prob ?? 0.1;
+      return Math.round(fraudProb * 100);
+    }
+  } catch (error) {
+    console.warn('Fraud Score ML Fallback:', error.message);
+    return 50; // Neutral fallback
+  }
+};
+
 module.exports = {
   predictMSME,
   predictRetail,
+  getLatestFraudScore,
   checkMLHealth,
 };

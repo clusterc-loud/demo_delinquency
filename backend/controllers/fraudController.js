@@ -2,6 +2,7 @@ const FraudFlag = require('../models/FraudFlag');
 const Customer = require('../models/Customer');
 const RiskScore = require('../models/RiskScore');
 const { recordRiskTransactionOnChain } = require('../services/blockchainService');
+const { getLatestFraudScore } = require('../services/mlService');
 
 const SIGNAL_LABELS = {
   circularMoneyFlow: 'Circular Fund Flow',
@@ -133,6 +134,7 @@ const getFraudEvidence = async (req, res, next) => {
       circularFlowData: flag.circularFlowData || [],
       netWorthTrend: flag.netWorthTrend || [],
       status: flag.status,
+      blockchainTxId: flag.blockchainTxId,
     });
   } catch (err) {
     next(err);
@@ -201,4 +203,48 @@ const recordDecision = async (req, res, next) => {
   }
 };
 
-module.exports = { getFraudStats, getFraudCases, getFraudEvidence, recordDecision };
+// POST /api/fraud/:customerId/sync
+const syncFraudScore = async (req, res, next) => {
+  try {
+    const { customerId } = req.params;
+    const customer = await Customer.findOne({ customerId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    // 1. Get score from ML service
+    const fraudScore = await getLatestFraudScore(customer);
+
+    // 2. Update DB
+    const flag = await FraudFlag.findOneAndUpdate(
+      { customerId: customer._id },
+      { fraudScore },
+      { new: true, upsert: true }
+    );
+
+    // 3. Anchor to Blockchain
+    let txId = null;
+    try {
+      txId = await recordRiskTransactionOnChain(
+        customer.customerId,
+        `ML Fraud Sync`,
+        fraudScore,
+        fraudScore > 70 ? 'Red' : 'Green'
+      );
+      flag.blockchainTxId = txId; // Storing the TXID for UI verification
+      await flag.save();
+    } catch (err) {
+      console.warn('[Fraud] Blockchain sync failed:', err.message);
+    }
+
+    res.json({ 
+      success: true, 
+      fraudScore, 
+      txId,
+      status: flag.status,
+      blockchainTxId: txId
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getFraudStats, getFraudCases, getFraudEvidence, recordDecision, syncFraudScore };
