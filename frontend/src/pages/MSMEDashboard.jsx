@@ -18,7 +18,7 @@ export default function MSMEDashboard({ data, loading, onHelpSelect, onSimulate 
 
   const handleLogout = () => {
     logout();
-    navigate('/customer-login');
+    navigate('/');
   };
 
   const openChatModal = async () => {
